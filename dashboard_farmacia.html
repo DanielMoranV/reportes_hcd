@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Farmacia - HCD</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="dashboard_farmacia.css">
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>Dashboard Farmacia</h1>
+    <p>Atenciones por Médico &mdash; Enero / Febrero 2026</p>
+  </div>
+  <div class="header-badge">HCD</div>
+</div>
+
+<div class="main">
+
+
+  <!-- KPI CARDS -->
+  <div class="kpi-row">
+    <div class="kpi-card total">
+      <div class="kpi-icon">🏥</div>
+      <div class="kpi-info">
+        <div class="value">241</div>
+        <div class="label">Total Atenciones</div>
+      </div>
+    </div>
+    <div class="kpi-card seguro">
+      <div class="kpi-icon">🛡️</div>
+      <div class="kpi-info">
+        <div class="value">125</div>
+        <div class="label">Seguro (51.9%)</div>
+      </div>
+    </div>
+    <div class="kpi-card part">
+      <div class="kpi-icon">👤</div>
+      <div class="kpi-info">
+        <div class="value">116</div>
+        <div class="label">Particular (48.1%)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHART + TABLE -->
+  <div class="content-grid">
+
+    <!-- BAR CHART -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Atenciones por Médico</h2>
+          <div class="subtitle">Agrupado por tipo de atención</div>
+        </div>
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#2e86de"></div>
+            Seguro
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#f39c12"></div>
+            Particular
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="chart-container">
+          <canvas id="barChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- RANKING TABLE -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Ranking Médicos</h2>
+          <div class="subtitle">Por total de atenciones</div>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <table class="ranking-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Médico</th>
+              <th class="num">Seg.</th>
+              <th class="num">Part.</th>
+              <th class="num">Total</th>
+            </tr>
+          </thead>
+          <tbody id="rankingBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN: TOP MÉDICOS POR VENTAS                                    -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+  <div class="section-divider">
+    <div class="sdot"></div>
+    <h3>Top Médicos por Ventas</h3>
+  </div>
+
+  <div class="ventas-grid">
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Ingresos por Médico</h2>
+          <div class="subtitle">Total venta realizada (S/) — exluye médicos sin conversiones</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="ventas-chart-container">
+          <canvas id="ventasMedChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Detalle de Ventas</h2>
+          <div class="subtitle">Ticket promedio por atención <i class="fi tip-down" data-f="Fórmula: tot_conversion ÷ admisiones_únicas&#10;Total vendido ÷ nº atenciones del médico">i</i></div>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <table class="loss-table">
+          <thead>
+            <tr>
+              <th>Médico</th>
+              <th class="r">Aten.</th>
+              <th class="r">Uds.</th>
+              <th class="r">Ticket prom.</th>
+              <th class="r">Total</th>
+            </tr>
+          </thead>
+          <tbody id="ventasBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN: TOP MEDICAMENTOS VENDIDOS                                 -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+  <div class="section-divider">
+    <div class="sdot"></div>
+    <h3>Medicamentos Más Vendidos</h3>
+  </div>
+
+  <div class="meds-top-grid">
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Top 10 por Ingreso</h2>
+          <div class="subtitle">Monto total vendido (S/)</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="meds-chart-container">
+          <canvas id="medsIngresoChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Top 10 por Unidades</h2>
+          <div class="subtitle">Cantidad de unidades vendidas</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="meds-chart-container">
+          <canvas id="medsUnidadesChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="section-divider">
+    <div class="sdot"></div>
+    <h3>Distribución y Segmentación</h3>
+  </div>
+
+
+  <!-- PIE CHART ROW -->
+  <div class="pie-row">
+
+    <!-- DOUGHNUT -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Distribución por Tipo</h2>
+          <div class="subtitle">Seguro vs Particular</div>
+        </div>
+      </div>
+      <div class="card-body" style="display:flex; align-items:center; gap:28px;">
+        <div class="pie-container" style="width:200px; flex-shrink:0;">
+          <canvas id="pieChart"></canvas>
+          <div class="pie-center-label" id="pieCenterLabel">
+            <div class="big">241</div>
+            <div class="small">Atenciones</div>
+          </div>
+        </div>
+        <div class="pie-legend">
+          <div class="pie-legend-item">
+            <div class="pie-legend-color" style="background:#2e86de"></div>
+            <div class="pie-legend-text">
+              <div class="pie-label">Seguro &mdash; 125 <span style="color:#2e86de;font-weight:700">51.9%</span></div>
+              <div class="pie-progress"><div class="pie-progress-fill" style="width:51.9%;background:#2e86de"></div></div>
+              <div class="pie-value">atenciones con cobertura de seguro</div>
+            </div>
+          </div>
+          <div class="pie-legend-item">
+            <div class="pie-legend-color" style="background:#f39c12"></div>
+            <div class="pie-legend-text">
+              <div class="pie-label">Particular &mdash; 116 <span style="color:#f39c12;font-weight:700">48.1%</span></div>
+              <div class="pie-progress"><div class="pie-progress-fill" style="width:48.1%;background:#f39c12"></div></div>
+              <div class="pie-value">atenciones sin cobertura</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONVERSIÓN POR TIPO -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Conversión por Tipo</h2>
+          <div class="subtitle">Tasa de conversión Seguro vs Particular</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="tipo-insight-grid">
+          <div class="insight-box seg">
+            <div class="ib-label">Seguro</div>
+            <div class="ib-big">74.4%</div>
+            <div class="ib-row"><span class="ib-key">Derivadas</span><span class="ib-val">2,991</span></div>
+            <div class="ib-row"><span class="ib-key">Convertidas</span><span class="ib-val">2,224</span></div>
+            <div class="ib-row"><span class="ib-key">Sin convertir</span><span class="ib-val">767</span></div>
+            <div class="ib-row"><span class="ib-key">Venta no realizada</span><span class="ib-val" style="color:#0891b2">S/ 2,991.15</span></div>
+          </div>
+          <div class="insight-box par">
+            <div class="ib-label">Particular</div>
+            <div class="ib-big">5.9%</div>
+            <div class="ib-row"><span class="ib-key">Derivadas</span><span class="ib-val">2,181</span></div>
+            <div class="ib-row"><span class="ib-key">Convertidas</span><span class="ib-val">128</span></div>
+            <div class="ib-row"><span class="ib-key">Sin convertir</span><span class="ib-val">2,053</span></div>
+            <div class="ib-row"><span class="ib-key">Venta no realizada</span><span class="ib-val" style="color:#0891b2">S/ 4,236.46</span></div>
+          </div>
+        </div>
+        <div style="margin-top:14px; padding:10px 12px; background:#fff8f8; border-radius:8px; border-left:3px solid #e74c3c;">
+          <span style="font-size:.75rem; color:#c0392b; font-weight:600;">⚠ Los pacientes Particulares convierten apenas el 5.9% de sus recetas en ventas.</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN: ANÁLISIS DE CONVERSIÓN                                    -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+  <div class="section-divider">
+    <div class="sdot"></div>
+    <h3>Análisis de Conversión de Medicamentos</h3>
+  </div>
+
+  <!-- KPI CONVERSIÓN -->
+  <div class="kpi-row-4">
+    <div class="kpi-card conv">
+      <div class="kpi-icon">🔄</div>
+      <div class="kpi-info">
+        <div class="value">45.5%</div>
+        <div class="label">Tasa de conversión global <i class="fi tip-l" data-f="Fórmula: can_conversion ÷ can_derivada × 100&#10;Ej: 2,352 ÷ 5,172 × 100 = 45.5%">i</i></div>
+      </div>
+    </div>
+    <div class="kpi-card units">
+      <div class="kpi-icon">📦</div>
+      <div class="kpi-info">
+        <div class="value">2,820</div>
+        <div class="label">Unidades sin vender <i class="fi tip-l" data-f="Fórmula: can_derivada − can_conversion&#10;Ej: 5,172 − 2,352 = 2,820 unidades">i</i></div>
+      </div>
+    </div>
+    <div class="kpi-card g-real">
+      <div class="kpi-icon">✅</div>
+      <div class="kpi-info">
+        <div class="value">S/ 16,640</div>
+        <div class="label">Ganancia neta realizada <i class="fi tip-r" data-f="Fórmula: Σ tot_conversion − Σ t_costo_conver&#10;S/ 27,910.87 − S/ 11,270.87 = S/ 16,640">i</i></div>
+      </div>
+    </div>
+    <div class="kpi-card g-perd">
+      <div class="kpi-icon">⚠️</div>
+      <div class="kpi-info">
+        <div class="value">S/ 7,228</div>
+        <div class="label">Potencial neto no realizado <i class="fi tip-r" data-f="Fórmula: Σ tot_sinconversion − Σ t_costo_sin_conver&#10;S/ 30,738.06 − S/ 23,510.45 = S/ 7,228">i</i></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STACKED BAR + TABLA PÉRDIDA POR MÉDICO -->
+  <div class="conv-grid">
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Derivaciones vs Conversiones por Médico <i class="fi tip-down" data-f="can_derivada = can_conversion + can_sinconvert&#10;Total recetado = Vendido + Sin convertir">i</i></h2>
+          <div class="subtitle">Unidades recetadas (derivadas) y vendidas (convertidas)</div>
+        </div>
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#27ae60"></div>Convertida
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#e74c3c"></div>Sin convertir
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="chart-container" style="height:360px;">
+          <canvas id="convChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Potencial No Realizado por Médico <i class="fi tip-down" data-f="Fórmula: tot_sinconversion − t_costo_sin_conver&#10;Precio venta no capturado − Costo del producto">i</i></h2>
+          <div class="subtitle">Precio venta &minus; costo de unidades no convertidas</div>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <table class="loss-table">
+          <thead>
+            <tr>
+              <th>Médico</th>
+              <th class="r">Conv% <i class="fi tip-down tip-r" data-f="Fórmula: can_conversion ÷ can_derivada × 100&#10;Unidades vendidas ÷ unidades recetadas">i</i></th>
+              <th class="r">Pot. No Realizado <i class="fi tip-down tip-r" data-f="Fórmula: tot_sinconversion − t_costo_sin_conver&#10;Precio venta no capturado − Costo del producto">i</i></th>
+            </tr>
+          </thead>
+          <tbody id="lossBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN: TOP PRODUCTOS                                             -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+  <div class="section-divider">
+    <div class="sdot"></div>
+    <h3>Medicamentos con Mayor Potencial No Realizado</h3>
+  </div>
+
+  <div class="prod-grid">
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Top 10 Productos &mdash; Potencial No Realizado <i class="fi tip-down" data-f="Fórmula: tot_sinconversion − t_costo_sin_conver&#10;Precio venta no capturado − Costo del producto">i</i></h2>
+          <div class="subtitle">Ingreso neto no capturado (venta &minus; costo)</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="prod-chart-container">
+          <canvas id="prodChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Detalle Top 10</h2>
+          <div class="subtitle">Unidades sin vender y monto de venta potencial</div>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <table class="loss-table">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th class="r">Uds.</th>
+              <th class="r">Venta pot. <i class="fi tip-down tip-r" data-f="= tot_sinconversion&#10;can_sinconvert × precio_venta unitario">i</i></th>
+              <th class="r">Pot. no realiz. <i class="fi tip-down tip-r" data-f="Fórmula: tot_sinconversion − t_costo_sin_conver&#10;Precio no facturado − Costo del inventario">i</i></th>
+            </tr>
+          </thead>
+          <tbody id="prodBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN: MEDICAMENTOS SIN STOCK                                    -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+  <div class="section-divider">
+    <div class="sdot"></div>
+    <h3>Medicamentos Sin Stock al Momento de la Atención</h3>
+  </div>
+
+  <!-- KPI SIN STOCK -->
+  <div class="sinstock-kpi">
+    <div class="kpi-card stk-prod">
+      <div class="kpi-icon">📋</div>
+      <div class="kpi-info">
+        <div class="value">103</div>
+        <div class="label">Productos distintos sin stock</div>
+      </div>
+    </div>
+    <div class="kpi-card stk-aten">
+      <div class="kpi-icon">🚨</div>
+      <div class="kpi-info">
+        <div class="value">97</div>
+        <div class="label">Atenciones afectadas</div>
+      </div>
+    </div>
+    <div class="kpi-card stk-cero">
+      <div class="kpi-icon">❌</div>
+      <div class="kpi-info">
+        <div class="value">0%</div>
+        <div class="label">Conversión en casos críticos</div>
+      </div>
+    </div>
+    <div class="kpi-card stk-seg">
+      <div class="kpi-icon">⚖️</div>
+      <div class="kpi-info">
+        <div class="value">183</div>
+        <div class="label">Líneas de receta sin stock</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+      <div>
+        <h2>Productos Sin Stock — Top 20 por Frecuencia</h2>
+        <div class="subtitle">Veces que se atendió sin existencia en almacén · Coloreado por tasa de conversión alcanzada</div>
+      </div>
+      <div class="legend" style="gap:14px;">
+        <div class="legend-item"><div class="legend-dot" style="background:#fde8e8;border:1px solid #fca5a5"></div><span style="font-size:.72rem;">0% conv.</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#fef3c7;border:1px solid #fcd34d"></div><span style="font-size:.72rem;">&lt;50%</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#d1fae5;border:1px solid #6ee7b7"></div><span style="font-size:.72rem;">≥50%</span></div>
+      </div>
+    </div>
+    <div class="card-body" style="padding:0">
+      <table class="sinstock-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Producto</th>
+            <th class="r">Veces sin stock</th>
+            <th class="r">Uds. recetadas</th>
+            <th class="r">Uds. vendidas</th>
+            <th class="r">% Conversión <i class="fi tip-down tip-r" data-f="Fórmula: can_conversion ÷ can_derivada × 100&#10;(con sto_med = 0 al momento de la receta)">i</i></th>
+          </tr>
+        </thead>
+        <tbody id="sinstockBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  Datos al 28/02/2026 &nbsp;|&nbsp; Fuente: data07-02_farmacia.xls &nbsp;|&nbsp; HCD
+</div>
+
+<script src="dashboard_farmacia.js"></script>
+</body>
+</html>
