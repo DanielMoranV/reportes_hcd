@@ -611,6 +611,15 @@ body {
 .strat-alert strong { color: #92400e; }
 
 /* ── Escenarios de mejora ─────────────────────────────── */
+.sc-legend {
+  font-size: .75rem;
+  font-weight: 600;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+}
 .scenario-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
