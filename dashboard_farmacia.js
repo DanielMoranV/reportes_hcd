@@ -7,8 +7,23 @@ const excelInput = document.getElementById("excelInput");
 const uploadStatus = document.getElementById("uploadStatus");
 const uploadPanel = document.getElementById("uploadPanel");
 
+// ── Param GET para auto-carga ─────────────────────────────
+// El archivo se especifica en la URL: ?archivo=nombre.xls
+// El servidor Python lo sirve desde /data/<nombre>.xls
+function getArchivoParam() {
+  return new URLSearchParams(window.location.search).get("archivo");
+}
+
 // ── Instancias de Chart (para destruir al recargar) ───────
 let charts = {};
+
+// ── Estado toggle bar chart ────────────────────────────────
+let barChartMode = "sep"; // "sep" | "uni"
+let _atencionesData = null;
+
+// ── Estado toggle conv chart ───────────────────────────────
+let convChartMode = "uni"; // "uni" | "aten"
+let _convData = null;
 
 // ─────────────────────────────────────────────────────────
 // CACHÉ EN localStorage
@@ -160,6 +175,28 @@ function showEmptyState() {
   ["parConvPct", "segConvPct"].forEach((id) => set(id, "—"));
   ["parSinConvTotal", "parActivaText"].forEach((id) => set(id, "—"));
   set("stockAlertText", "—");
+
+  // —— Reset toggle bar chart
+  barChartMode = "sep";
+  _atencionesData = null;
+  document.querySelectorAll("[data-mode]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.mode === "sep");
+  });
+  const barLegend = document.getElementById("barLegend");
+  if (barLegend) barLegend.style.display = "";
+  const barSub = document.getElementById("barSubtitle");
+  if (barSub) barSub.textContent = "Agrupado por tipo de atención";
+
+  // —— Reset toggle conv chart
+  convChartMode = "uni";
+  _convData = null;
+  document.querySelectorAll("[data-conv-mode]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.convMode === "uni");
+  });
+  const convSub = document.getElementById("convSubtitle");
+  if (convSub)
+    convSub.textContent =
+      "Unidades recetadas (derivadas) y vendidas (convertidas)";
 
   // —— Barra superior de estado
   setStatus(
@@ -318,7 +355,7 @@ function renderDashboard(D) {
   renderVentasBody(D.topMedVentas);
   renderMedsIngresoChart(D.topMedIngreso);
   renderMedsUnidadesChart(D.topMedUnidades);
-  renderSinStockBody(D.sinStockData);
+  renderSinStockBody(D.sinStockData.slice(0, 20));
   renderPieChart(totalSeg, totalPar);
   renderConvChart(D.convData);
   renderLossBody(D.convData);
@@ -419,44 +456,61 @@ function set(id, txt) {
 // GRÁFICO: BAR CHART ATENCIONES POR MÉDICO
 // ─────────────────────────────────────────────────────────
 function renderBarChart(data) {
+  _atencionesData = data;
   destroyChart("barChart");
   const labels = data.map((d) => abreviar(d.medico));
-  const seguros = data.map((d) => d.seguro);
-  const parts = data.map((d) => d.particular);
   const totales = data.map((d) => d.seguro + d.particular);
   const ctx = document.getElementById("barChart").getContext("2d");
+
+  let datasets;
+  if (barChartMode === "uni") {
+    datasets = [
+      {
+        label: "Total",
+        data: totales,
+        backgroundColor: "#6366f1",
+        borderRadius: 4,
+        borderSkipped: false,
+      },
+    ];
+  } else {
+    const seguros = data.map((d) => d.seguro);
+    const parts = data.map((d) => d.particular);
+    datasets = [
+      {
+        label: "Seguro",
+        data: seguros,
+        backgroundColor: "#2e86de",
+        borderRadius: 4,
+        borderSkipped: false,
+      },
+      {
+        label: "Particular",
+        data: parts,
+        backgroundColor: "#f39c12",
+        borderRadius: 4,
+        borderSkipped: false,
+      },
+    ];
+  }
+
+  const tooltipCallbacks = {
+    title: (items) => data[items[0].dataIndex].medico,
+  };
+  if (barChartMode === "sep") {
+    tooltipCallbacks.afterBody = (items) =>
+      `Total: ${totales[items[0].dataIndex]}`;
+  }
+
   charts["barChart"] = new Chart(ctx, {
     type: "bar",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Seguro",
-          data: seguros,
-          backgroundColor: "#2e86de",
-          borderRadius: 4,
-          borderSkipped: false,
-        },
-        {
-          label: "Particular",
-          data: parts,
-          backgroundColor: "#f39c12",
-          borderRadius: 4,
-          borderSkipped: false,
-        },
-      ],
-    },
+    data: { labels, datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: {
-          callbacks: {
-            title: (items) => data[items[0].dataIndex].medico,
-            afterBody: (items) => `Total: ${totales[items[0].dataIndex]}`,
-          },
-        },
+        tooltip: { callbacks: tooltipCallbacks },
       },
       scales: {
         x: {
@@ -476,6 +530,22 @@ function renderBarChart(data) {
       },
     },
   });
+}
+
+function setBarMode(mode) {
+  barChartMode = mode;
+  document.querySelectorAll("[data-mode]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.mode === mode);
+  });
+  const legend = document.getElementById("barLegend");
+  if (legend) legend.style.display = mode === "sep" ? "" : "none";
+  const sub = document.getElementById("barSubtitle");
+  if (sub)
+    sub.textContent =
+      mode === "sep"
+        ? "Agrupado por tipo de atención"
+        : "Total de atenciones (Seguro + Particular)";
+  if (_atencionesData) renderBarChart(_atencionesData);
 }
 
 // RANKING TABLE
@@ -768,13 +838,29 @@ function renderPieChart(seg, par) {
 
 // CONV CHART
 function renderConvChart(data) {
+  _convData = data;
   destroyChart("convChart");
   const ctx = document.getElementById("convChart").getContext("2d");
-  charts["convChart"] = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: data.map((d) => d.abr),
-      datasets: [
+
+  const isAten = convChartMode === "aten";
+  const datasets = isAten
+    ? [
+        {
+          label: "Con conversión",
+          data: data.map((d) => d.atenConv),
+          backgroundColor: "#27ae60",
+          borderRadius: 0,
+          borderSkipped: false,
+        },
+        {
+          label: "Sin conversión",
+          data: data.map((d) => d.atenSinConv),
+          backgroundColor: "#e74c3c",
+          borderRadius: 4,
+          borderSkipped: "bottom",
+        },
+      ]
+    : [
         {
           label: "Convertidas",
           data: data.map((d) => d.conv),
@@ -789,8 +875,28 @@ function renderConvChart(data) {
           borderRadius: 4,
           borderSkipped: "bottom",
         },
-      ],
-    },
+      ];
+
+  const tooltipAfterBody = isAten
+    ? (items) => {
+        const d = data[items[0].dataIndex];
+        const total = d.atenConv + d.atenSinConv;
+        const pct =
+          total > 0 ? ((d.atenConv / total) * 100).toFixed(1) : "0.0";
+        return [`Total atenciones: ${total}`, `Tasa conv.: ${pct}%`];
+      }
+    : (items) => {
+        const d = data[items[0].dataIndex];
+        return [
+          `Total deriv.: ${d.deriv}`,
+          `Tasa conv.: ${d.pct}%`,
+          `Pot. no realiz.: S/ ${d.ganPerd.toFixed(2)}`,
+        ];
+      };
+
+  charts["convChart"] = new Chart(ctx, {
+    type: "bar",
+    data: { labels: data.map((d) => d.abr), datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -799,14 +905,7 @@ function renderConvChart(data) {
         tooltip: {
           callbacks: {
             title: (items) => data[items[0].dataIndex].medico,
-            afterBody: (items) => {
-              const d = data[items[0].dataIndex];
-              return [
-                `Total deriv.: ${d.deriv}`,
-                `Tasa conv.: ${d.pct}%`,
-                `Pot. no realiz.: S/ ${d.ganPerd.toFixed(2)}`,
-              ];
-            },
+            afterBody: tooltipAfterBody,
           },
         },
       },
@@ -830,6 +929,20 @@ function renderConvChart(data) {
       },
     },
   });
+}
+
+function setConvMode(mode) {
+  convChartMode = mode;
+  document.querySelectorAll("[data-conv-mode]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.convMode === mode);
+  });
+  const sub = document.getElementById("convSubtitle");
+  if (sub)
+    sub.textContent =
+      mode === "uni"
+        ? "Unidades recetadas (derivadas) y vendidas (convertidas)"
+        : "Atenciones con y sin conversión por médico (campo admision)";
+  if (_convData) renderConvChart(_convData);
 }
 
 // LOSS BODY TABLE
@@ -1375,9 +1488,35 @@ function buildDataFromWorkbook(wb, fileName) {
     .map((d) => {
       d.pct =
         d.deriv > 0 ? parseFloat(((d.conv / d.deriv) * 100).toFixed(1)) : 0;
+      d.atenConv = 0;
+      d.atenSinConv = 0;
       return d;
     })
     .sort((a, b) => b.deriv - a.deriv);
+
+  // Enriquecer convData con atenciones únicas por médico (campo admision)
+  if (admCol) {
+    const admConvSet = {};
+    norm.forEach((r) => {
+      const med = getMed(r);
+      const adm = String(r[admCol] || "").trim();
+      if (!adm) return;
+      const key = med + "|" + adm;
+      if (!admConvSet[key]) admConvSet[key] = { med, hasConv: false };
+      if (num(get(r, "can_conversion")) > 0) admConvSet[key].hasConv = true;
+    });
+    const atenByMed = {};
+    Object.values(admConvSet).forEach(({ med, hasConv }) => {
+      if (!atenByMed[med]) atenByMed[med] = { atenConv: 0, atenSinConv: 0 };
+      if (hasConv) atenByMed[med].atenConv++;
+      else atenByMed[med].atenSinConv++;
+    });
+    convData.forEach((d) => {
+      const ac = atenByMed[d.medico] || { atenConv: 0, atenSinConv: 0 };
+      d.atenConv = ac.atenConv;
+      d.atenSinConv = ac.atenSinConv;
+    });
+  }
 
   // ── CONVERSIÓN SOLO PARTICULAR POR MÉDICO ─────────────────────
   // convData incluye SEGURO + PARTICULAR; convDataPar es solo PAR
@@ -1513,8 +1652,7 @@ function buildDataFromWorkbook(wb, fileName) {
     stockMap[prod].conv += num(get(r, "can_conversion"));
   });
   const sinStockData = Object.values(stockMap)
-    .sort((a, b) => b.veces - a.veces)
-    .slice(0, 20);
+    .sort((a, b) => b.veces - a.veces);
 
   // ── KPIs GLOBALES ─────────────────────────────────────
   let totalDeriv = 0,
@@ -1758,13 +1896,60 @@ if (clearCacheBtn) {
   });
 }
 
-const _cached = loadFromCache();
-if (_cached) {
-  renderDashboard(_cached);
+// ─────────────────────────────────────────────────────────
+// AUTO-CARGA DESDE SERVIDOR (endpoint /data/)
+// ─────────────────────────────────────────────────────────
+async function autoLoadFile(fileName) {
+  const url = `/data/${encodeURIComponent(fileName)}`;
   setStatus(
-    `<span class="us-ok">✓ Datos restaurados</span> <span class="us-date">Rango: ${_cached.fechaRango}</span>` +
-      ` <span class="us-info">· ${_cached.archivoNom} · ${_cached.totalRows} registros</span>`,
+    `<span class="us-spin"></span> <span class="us-info">Cargando ${fileName}…</span>`,
   );
-} else {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      const msg = await response.text().catch(() => `HTTP ${response.status}`);
+      throw new Error(msg || `HTTP ${response.status}`);
+    }
+    const buffer = await response.arrayBuffer();
+    const wb = XLSX.read(new Uint8Array(buffer), {
+      type: "array",
+      cellDates: true,
+    });
+    const D = buildDataFromWorkbook(wb, fileName);
+    saveToCache(D);
+    renderDashboard(D);
+    setStatus(
+      `<span class="us-ok">✓ Cargado</span> <span class="us-date">Rango: ${D.fechaRango}</span>` +
+        ` <span class="us-info">· ${D.archivoNom} · ${D.totalRows} registros</span>`,
+    );
+  } catch (err) {
+    console.error("Error al cargar archivo:", err);
+    setStatus(
+      `<span class="us-err">✗ Error al cargar "${fileName}":</span>` +
+        ` <span class="us-info">${err.message}</span>`,
+    );
+    showEmptyState();
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// INICIALIZACIÓN
+// ─────────────────────────────────────────────────────────
+const _archivoParam = getArchivoParam();
+if (_archivoParam) {
+  // URL tiene ?archivo=... → siempre cargar desde el servidor (dato fresco)
   showEmptyState();
+  autoLoadFile(_archivoParam);
+} else {
+  // Sin param → intentar desde caché localStorage
+  const _cached = loadFromCache();
+  if (_cached) {
+    renderDashboard(_cached);
+    setStatus(
+      `<span class="us-ok">✓ Datos en caché</span> <span class="us-date">Rango: ${_cached.fechaRango}</span>` +
+        ` <span class="us-info">· ${_cached.archivoNom} · ${_cached.totalRows} registros</span>`,
+    );
+  } else {
+    showEmptyState();
+  }
 }

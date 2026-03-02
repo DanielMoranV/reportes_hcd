@@ -82,16 +82,22 @@
           <div class="card-header">
             <div>
               <h2>Atenciones por Médico</h2>
-              <div class="subtitle">Agrupado por tipo de atención</div>
+              <div class="subtitle" id="barSubtitle">Agrupado por tipo de atención</div>
             </div>
-            <div class="legend">
-              <div class="legend-item">
-                <div class="legend-dot" style="background: #2e86de"></div>
-                Seguro
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="bar-toggle">
+                <button class="bt-btn active" data-mode="sep" onclick="setBarMode('sep')">Separado</button>
+                <button class="bt-btn" data-mode="uni" onclick="setBarMode('uni')">Unificado</button>
               </div>
-              <div class="legend-item">
-                <div class="legend-dot" style="background: #f39c12"></div>
-                Particular
+              <div class="legend" id="barLegend">
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #2e86de"></div>
+                  Seguro
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #f39c12"></div>
+                  Particular
+                </div>
               </div>
             </div>
           </div>
@@ -445,18 +451,24 @@
                   >i</i
                 >
               </h2>
-              <div class="subtitle">
+              <div class="subtitle" id="convSubtitle">
                 Unidades recetadas (derivadas) y vendidas (convertidas)
               </div>
             </div>
-            <div class="legend">
-              <div class="legend-item">
-                <div class="legend-dot" style="background: #27ae60"></div>
-                Convertida
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="bar-toggle">
+                <button class="bt-btn active" data-conv-mode="uni" onclick="setConvMode('uni')">Unidades</button>
+                <button class="bt-btn" data-conv-mode="aten" onclick="setConvMode('aten')">Atenciones</button>
               </div>
-              <div class="legend-item">
-                <div class="legend-dot" style="background: #e74c3c"></div>
-                Sin convertir
+              <div class="legend" id="convLegend">
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #27ae60"></div>
+                  Convertida
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #e74c3c"></div>
+                  Sin convertir
+                </div>
               </div>
             </div>
           </div>
