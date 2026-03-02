@@ -374,11 +374,12 @@ function renderProyecciones(K) {
   const stockFail = Math.max(0, K.parStockFail);
   const activas = Math.max(0, sinConv - stockFail);
 
-  // Margen neto por unidad = parVentaNR ÷ sinConv (calculado del Excel real)
-  // Para ingreso bruto usamos avgPrecioUnd; para ganancia neta usamos margenNeto
+  // Precio por unidad = parRevNR ÷ sinConv (precio real de las PAR sin vender)
+  // Margen por unidad = parVentaNR ÷ sinConv (margen de esas mismas unidades)
+  const precioPorUnd =
+    sinConv > 0 ? K.parRevNR / sinConv : K.avgPrecioUnd;
   const margenNetoPorUnd =
     sinConv > 0 ? K.parVentaNR / sinConv : K.avgPrecioUnd - K.avgCostoUnd;
-  const precioPorUnd = K.avgPrecioUnd || 21.12;
 
   // ── Alerta ── reconstruye el HTML completo para que los IDs siempre existan
   const stockText =
@@ -402,7 +403,8 @@ function renderProyecciones(K) {
   // ── Tarjeta Actual ──
   set("scActualPct", parPct.toFixed(1) + "%");
   set("scActualUnds", `${fmtN(K.parConv)} / ${fmtN(K.parDeriv)} unds`);
-  set("scActualRev", `Potencial no realizado: S/ ${fmt(K.parVentaNR)}`);
+  set("scActualRev",
+    `Ingreso potencial: S/ ${fmt(K.parRevNR)} · Ganancia: S/ ${fmt(K.parVentaNR)}`);
 
   // ── Escenarios ──
   const escenarios = [
@@ -1547,12 +1549,12 @@ function buildDataFromWorkbook(wb, fileName) {
     segConv = 0,
     parDeriv = 0,
     parConv = 0;
-  let parVentaNR = 0,
+  let parVentaNR = 0,   // margen neto PAR no realizado (tot_sinconv − t_costo_sinconv)
+    parRevNR = 0,       // ingreso bruto PAR no realizado (tot_sinconversion)
     parStockFail = 0,
     segVentaNR = 0;
-  let sumPrecio = 0,
-    sumCosto = 0,
-    nProd = 0;
+  // Precio ponderado PAR: Σ(tot_conversion PAR) / Σ(can_conversion PAR)
+  let parSumRev = 0, parSumConv = 0;
 
   norm.forEach((r) => {
     const tipo = getTipo(r);
@@ -1574,20 +1576,21 @@ function buildDataFromWorkbook(wb, fileName) {
     } else {
       parDeriv += der;
       parConv += conv;
-      parVentaNR += totS - coS;
+      parRevNR  += totS;           // ingreso bruto no capturado
+      parVentaNR += totS - coS;   // margen neto no capturado
       if (sto <= 0) {
-        // 0 y negativos = sin stock
         parStockFail += Math.max(0, der - conv);
       }
-    }
-    if (conv > 0 && der > 0) {
-      sumPrecio += totC / conv;
-      sumCosto += coC / conv;
-      nProd++;
+      // precio ponderado PAR (solo unidades convertidas como referencia)
+      if (conv > 0) {
+        parSumRev  += totC;
+        parSumConv += conv;
+      }
     }
   });
-  const avgPrecioUnd = nProd > 0 ? sumPrecio / nProd : 21.12;
-  const avgCostoUnd = nProd > 0 ? sumCosto / nProd : 16.68;
+  // Precio promedio ponderado de unidades PAR convertidas (fallback si no hay sin-convertir)
+  const avgPrecioUnd = parSumConv > 0 ? parSumRev / parSumConv : 21.12;
+  const avgCostoUnd  = avgPrecioUnd * 0.789; // mantener ratio aproximado de fallback
 
   const kpi = {
     tasaGlobal:
@@ -1605,7 +1608,8 @@ function buildDataFromWorkbook(wb, fileName) {
     parConv,
     parSinConv: parDeriv - parConv,
     parStockFail,
-    parVentaNR,
+    parVentaNR,  // margen neto PAR no realizado
+    parRevNR,    // ingreso bruto PAR no realizado
     avgPrecioUnd,
     avgCostoUnd,
   };
