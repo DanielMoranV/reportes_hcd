@@ -151,7 +151,6 @@ function showEmptyState() {
   empty("descuentoBody", 7);
   empty("medprioBody", 6);
   empty("insightRow", 1);
-  empty("stratGrid", 1);
 
   // —— Alerta de estrategias
   const alertTxt = document.getElementById("stratAlertText");
@@ -361,7 +360,6 @@ function renderDashboard(D) {
   renderLossBody(D.convData);
   renderProdChart(D.topProductos);
   renderProdBody(D.topProductos);
-  renderStrategias(D.estrategias, D.kpi);
   renderInsights(D.estrategias, D.kpi);
   renderDescuentoTable(D.estrategias);
   renderMedPrioTable(D.medPriData, D.estrategias, D.kpi);
@@ -1188,125 +1186,6 @@ function renderMedPrioTable(medPriData, E, K) {
   tbody.innerHTML = rows;
 }
 
-// ─────────────────────────────────────────────────────────
-function renderStrategias(E, K) {
-  const grid = document.getElementById("stratGrid");
-  if (!grid) return;
-
-  // Helpers
-  const badge = (cls, icon, label) =>
-    `<div class="strat-header"><span class="priority-badge ${cls}">${icon} ${label}</span></div>`;
-  const impact = (label, val) =>
-    `<div class="strat-impact"><span class="impact-label">${label}</span><span class="impact-val">${val}</span></div>`;
-  const action = (txt) =>
-    `<div class="strat-action"><strong>Acción:</strong> ${txt}</div>`;
-  const card = (prio, inner) =>
-    `<div class="strat-card ${prio}">${inner}</div>`;
-
-  // ── 1. Reposición Urgente de Stock ────────────────────────
-  const c1 = card(
-    "prio-alta",
-    `
-    ${badge("p-alta", "&#9650;", "Prioridad Alta")} <span class="strat-icon">📦</span>
-    <h4>Reposición Urgente de Stock</h4>
-    <p>${fmtN(E.stockUnds)} unidades Particulares no se convirtieron porque el producto
-    tenía <code>sto_med ≤ 0</code> al momento de la receta. Es la causa número uno
-    de no-conversión y no requiere cambios de precio ni estrategias comerciales.</p>
-    ${impact("Ventas recuperables sin descuento", "S/ " + fmt(E.stockValRecup))}
-    ${action("Auditoría semanal de stock para los top 20 medicamentos más recetados en consulta Particular. Establecer stock mínimo de seguridad por especialidad.")}`,
-  );
-
-  // ── 2. Médicos de Baja Conversión ─────────────────────────
-  const medList = E.medPar
-    .map((m) => {
-      const nom = m.medico.split(" ").slice(0, 2).join(" ");
-      return `${nom} <b>(${m.pct.toFixed(1)}%</b>, ${fmtN(m.sinConv)} unds sin convertir)`;
-    })
-    .join("; ");
-  const totalSinConvMed = E.medPar.reduce((s, m) => s + m.sinConv, 0);
-  const pctDeTotalMed =
-    K.parDeriv > 0
-      ? ((totalSinConvMed / (K.parDeriv - K.parConv)) * 100).toFixed(0)
-      : "—";
-  const potCombinado = E.medPar.reduce((s, m) => s + m.ganPerd, 0);
-  const c2 = card(
-    "prio-alta",
-    `
-    ${badge("p-alta", "&#9650;", "Prioridad Alta")} <span class="strat-icon">👨‍⚕️</span>
-    <h4>Gestión Focalizada en Médicos de Baja Conversión</h4>
-    <p>${medList} — concentran ${fmtN(totalSinConvMed)} unds no convertidas
-    (${pctDeTotalMed}% del total Particular).</p>
-    ${impact("Potencial neto combinado (" + E.medPar.length + " médicos)", "S/ " + fmtN(Math.round(potCombinado)))}
-    ${action("Coordinar con los servicios correspondientes para que farmacia comunique disponibilidad y alternativas en el momento de la atención.")}`,
-  );
-
-  // ── 3. Descuentos Selectivos Alto Margen ──────────────────
-  const topProdList = E.top4AltoMargen
-    .map((p) => `${p.producto} (${p.margen.toFixed(1)}%)`)
-    .join(", ");
-  const c3 = card(
-    "prio-media",
-    `
-    ${badge("p-media", "&#9654;", "Prioridad Media")} <span class="strat-icon">🏷️</span>
-    <h4>Descuentos Selectivos en Productos de Alto Margen</h4>
-    <p>Solo ${E.nAltoMargen} productos con margen ≥ 30% soportan descuentos sin pérdidas.
-    ${E.top4AltoMargen.length ? topProdList + " son los candidatos más seguros." : ""}</p>
-    ${impact("Ganancia neta con 15% descuento (si se convierten)", "S/ " + fmtN(Math.round(E.ganNeta15dscto)) + " netos")}
-    ${action('Crear una "tarjeta de beneficios Particular" con descuento del 10–15% exclusivamente en los productos con margen ≥ 30%. No aplicar a productos con margen < 30%.')}`,
-  );
-
-  // ── 4. Plan de Pago Diferido Alto Costo ──────────────────
-  const altoCostoDesc = E.topAltoCosto.length
-    ? E.topAltoCosto
-        .map(
-          (p) =>
-            `${p.producto} (${fmtN(p.sinConv)} unds, S/ ${fmtN(Math.round(p.totSin))} potencial)`,
-        )
-        .join(" y ")
-    : "medicamentos de alto costo";
-  const c4 = card(
-    "prio-media",
-    `
-    ${badge("p-media", "&#9654;", "Prioridad Media")} <span class="strat-icon">💳</span>
-    <h4>Plan de Pago Diferido para Medicamentos de Alto Costo</h4>
-    <p>${altoCostoDesc} tienen precio unitario elevado — no son candidatos a descuento
-    pero sí a financiamiento en cuotas.</p>
-    ${impact("Potencial combinado sin alterar precio", "S/ " + fmtN(Math.round(E.potencialAltoCosto)))}
-    ${action("Habilitar pago en 2–3 cuotas sin interés para recetas de costo total > S/ 30 en consultas Particulares.")}`,
-  );
-
-  // ── 5. Sustitución por Genéricos ─────────────────────────
-  const c5 = card(
-    "prio-media",
-    `
-    ${badge("p-media", "&#9654;", "Prioridad Media")} <span class="strat-icon">💊</span>
-    <h4>Sustitución por Alternativas Genéricas</h4>
-    <p>${E.nBajoMargen} productos no convertidos tienen margen &lt; 20%, lo que hace
-    inviable el descuento en el original. Ofrecer un equivalente genérico disponible
-    en stock puede concretar la venta manteniendo o mejorando el margen.</p>
-    ${impact("Unds no convertidas en este rango de margen", fmtN(E.undsBajoMargen) + " unds")}
-    ${action("Capacitar al personal de farmacia para ofrecer proactivamente el equivalente genérico disponible cuando el original no es adquirido por el paciente Particular.")}`,
-  );
-
-  // ── 6. Fidelización Particular ───────────────────────────
-  const mejorNom = E.mejorMedPar
-    ? E.mejorMedPar.medico.split(" ").slice(0, 2).join(" ")
-    : "—";
-  const mejorPct = E.mejorMedPar ? E.mejorMedPar.pct.toFixed(1) + "%" : "—";
-  const c6 = card(
-    "prio-baja",
-    `
-    ${badge("p-baja", "&#9670;", "Prioridad Baja")} <span class="strat-icon">🎯</span>
-    <h4>Programa de Fidelización Particular</h4>
-    <p>Se registraron ${fmtN(E.uniqAdmPar)} admisiones únicas Particulares en el período.
-    ${E.mejorMedPar ? mejorNom + " lidera con " + mejorPct + " de conversión — modelo a replicar. " : ""}
-    Crear seguimiento de conversión individual permite identificar pacientes con potencial de fidelización.</p>
-    ${impact("Impacto", "Aumento de conversión sostenida")}
-    ${action("Implementar registro simple de admisiones Particular con historial de compra por paciente, usando el campo <code>admision</code> como identificador.")}`,
-  );
-
-  grid.innerHTML = c1 + c2 + c3 + c4 + c5 + c6;
-}
 
 // ─────────────────────────────────────────────────────────
 // PARSEO DE EXCEL  (SheetJS)
