@@ -20,7 +20,7 @@ import urllib.parse
 from pathlib import Path
 
 # ── Configuración ──────────────────────────────────────────
-PORT     = 8000
+PORT     = 8091
 HOST     = "0.0.0.0"   # Escucha en todas las interfaces de red
 # Directorio de los archivos estáticos (HTML, CSS, JS)
 STATIC_DIR = Path(__file__).parent.resolve()
