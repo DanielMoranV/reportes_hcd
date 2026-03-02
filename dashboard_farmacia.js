@@ -1,55 +1,795 @@
+﻿/* ─────────────────────────────────────────────────────────
+   dashboard_farmacia.js  —  versión dinámica con carga Excel
+   ───────────────────────────────────────────────────────── */
 
-  // ── DATOS ──────────────────────────────────────────────────────────────────
-  const data = [
-    { medico: 'SILVA MARROQUIN MARTHA',          seguro: 35, particular: 38 },
-    { medico: 'LEIVA HERRADA CLEVER HUMBERTO',   seguro: 11, particular: 26 },
-    { medico: 'MEDINA ARRUNATEGUI CESAR MARTIN', seguro: 25, particular:  2 },
-    { medico: 'ALARCON CANOVA STEVEN',           seguro: 23, particular:  2 },
-    { medico: 'ALVARADO GUERRERO ALEMBERT',      seguro:  7, particular: 13 },
-    { medico: 'YAÑEZ CESTI MARIANO MANUEL',      seguro:  8, particular: 12 },
-    { medico: 'GUERRERO AMAYA EDUARDO',          seguro:  6, particular: 11 },
-    { medico: 'AYALA ROSALES MANUEL ALEXANDER',  seguro:  6, particular:  4 },
-    { medico: 'SALAZAR HERNANDEZ OMAR GREGORY',  seguro:  2, particular:  3 },
-    { medico: 'GALLOSA PALACIOS MARIA EUGUENIA', seguro:  2, particular:  0 },
-    { medico: 'HERRERA OLIVARES MARTIN',         seguro:  0, particular:  2 },
-    { medico: 'RAMOS RODRIGUEZ INGRID JOYCE',    seguro:  0, particular:  2 },
-    { medico: 'CORDOVA CUEVA LIZ BRENDA',        seguro:  0, particular:  1 },
-  ];
+// ── Referencias a elementos del DOM ──────────────────────
+const excelInput = document.getElementById("excelInput");
+const uploadStatus = document.getElementById("uploadStatus");
+const uploadPanel = document.getElementById("uploadPanel");
 
-  // Abreviar nombres para el eje del chart
-  function abreviar(nombre) {
-    const partes = nombre.split(' ');
-    // apellido + inicial nombre
-    return partes[0] + (partes[2] ? ', ' + partes[2][0] + '.' : '');
+// ── Instancias de Chart (para destruir al recargar) ───────
+let charts = {};
+
+// ─────────────────────────────────────────────────────────
+// CACHÉ EN localStorage
+// ─────────────────────────────────────────────────────────
+const CACHE_KEY = "hcd_farmacia_data_v1";
+
+function saveToCache(D) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(D));
+  } catch (e) {
+    console.warn("No se pudo guardar en caché:", e.message);
+  }
+}
+
+function loadFromCache() {
+  try {
+    const s = localStorage.getItem(CACHE_KEY);
+    return s ? JSON.parse(s) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function clearCache() {
+  localStorage.removeItem(CACHE_KEY);
+}
+
+// ─────────────────────────────────────────────────────────
+// ESTADO VACÍO  (sin Excel cargado)
+// ─────────────────────────────────────────────────────────
+function showEmptyState() {
+  // —— Header
+  const dashHdr = document.getElementById("dashHeaderDate");
+  if (dashHdr) dashHdr.textContent = "Sin datos cargados";
+
+  // —— Footer
+  const footerBar = document.getElementById("footerBar");
+  if (footerBar) footerBar.textContent = "Sin datos cargados";
+
+  // —— Helper: resetea un querySelector a "—"
+  const qset = (sel) => {
+    const el = document.querySelector(sel);
+    if (el) el.textContent = "—";
+  };
+
+  // —— KPIs superiores (atenciones)
+  qset(".kpi-card.total .value");
+  qset(".kpi-card.seguro .value");
+  qset(".kpi-card.part .value");
+  const segLabel = document.querySelector(".kpi-card.seguro .label");
+  if (segLabel) segLabel.textContent = "Seguro";
+  const parLabel = document.querySelector(".kpi-card.part .label");
+  if (parLabel) parLabel.textContent = "Particular";
+
+  // —— KPIs conversión
+  qset(".kpi-card.conv .value");
+  set("kpiUnidadesSinVender", "—");
+  qset(".kpi-card.g-real .value");
+  qset(".kpi-card.g-perd .value");
+
+  // —— KPIs sin stock
+  qset(".kpi-card.stk-prod .value");
+  qset(".kpi-card.stk-aten .value");
+  qset(".kpi-card.stk-cero .value");
+  qset(".kpi-card.stk-seg .value");
+
+  // —— Pie center
+  qset("#pieCenterLabel .big");
+
+  // —— Pie legend
+  const pLegItems = document.querySelectorAll(".pie-legend-item");
+  if (pLegItems[0]) {
+    const lbl = pLegItems[0].querySelector(".pie-label");
+    if (lbl) lbl.innerHTML = "Seguro &mdash; —";
+    const fill = pLegItems[0].querySelector(".pie-progress-fill");
+    if (fill) fill.style.width = "0%";
+  }
+  if (pLegItems[1]) {
+    const lbl = pLegItems[1].querySelector(".pie-label");
+    if (lbl) lbl.innerHTML = "Particular &mdash; —";
+    const fill = pLegItems[1].querySelector(".pie-progress-fill");
+    if (fill) fill.style.width = "0%";
   }
 
-  const labels   = data.map(d => abreviar(d.medico));
-  const seguros  = data.map(d => d.seguro);
-  const parts    = data.map(d => d.particular);
-  const totales  = data.map(d => d.seguro + d.particular);
+  // —— Insight boxes seguro / particular
+  [".insight-box.seg", ".insight-box.par"].forEach((sel) => {
+    const box = document.querySelector(sel);
+    if (!box) return;
+    const big = box.querySelector(".ib-big");
+    if (big) big.textContent = "—";
+    box.querySelectorAll(".ib-val").forEach((v) => (v.textContent = "—"));
+  });
 
-  // ── BAR CHART ─────────────────────────────────────────────────────────────
-  const ctx = document.getElementById('barChart').getContext('2d');
-  new Chart(ctx, {
-    type: 'bar',
+  // —— Alerta particular (panel rojo)
+  const alertPar = document.querySelector('[style*="fff8f8"] span');
+  if (alertPar) alertPar.textContent = "⚠ Sin datos cargados.";
+
+  // —— Gráficos: destruir instancias previas
+  Object.values(charts).forEach((c) => {
+    try {
+      c.destroy();
+    } catch (_) {}
+  });
+  charts = {};
+
+  // —— Tablas / contenedores dinámicos
+  const empty = (id, colspan = 5) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.tagName === "TBODY") {
+      el.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:#9ca3af;font-size:.85rem">
+        Cargue un archivo Excel para ver los datos</td></tr>`;
+    } else {
+      el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:#9ca3af;font-size:.85rem">
+        <div style="font-size:2rem;margin-bottom:8px">📂</div>
+        Cargue un archivo Excel para ver los datos</div>`;
+    }
+  };
+
+  empty("rankingBody", 5);
+  empty("ventasBody", 5);
+  empty("lossBody", 3);
+  empty("sinstockBody", 6);
+  empty("prodBody", 4);
+  empty("descuentoBody", 7);
+  empty("medprioBody", 6);
+  empty("insightRow", 1);
+  empty("stratGrid", 1);
+
+  // —— Alerta de estrategias
+  const alertTxt = document.getElementById("stratAlertText");
+  if (alertTxt)
+    alertTxt.innerHTML =
+      "<em style='color:#9ca3af'>Cargue un archivo Excel para ver el análisis de conversión Particular.</em>";
+
+  // —— Escenarios
+  ["scActualPct", "scConsPct", "scModPct", "scOptPct"].forEach((id) =>
+    set(id, "—"),
+  );
+  ["scActualUnds", "scConsUnds", "scModUnds", "scOptUnds"].forEach((id) =>
+    set(id, ""),
+  );
+  ["scActualRev", "scConsRev", "scModRev", "scOptRev"].forEach((id) =>
+    set(id, ""),
+  );
+  ["scConsGain", "scModGain", "scOptGain"].forEach((id) => set(id, ""));
+
+  // —— KPIs de conversión particular
+  ["parConvPct", "segConvPct"].forEach((id) => set(id, "—"));
+  ["parSinConvTotal", "parActivaText"].forEach((id) => set(id, "—"));
+  set("stockAlertText", "—");
+
+  // —— Barra superior de estado
+  setStatus(
+    '<span class="us-info">📂 Cargue un archivo Excel (.xls / .xlsx) para comenzar</span>',
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────
+function fmt(n, dec = 2) {
+  return n.toLocaleString("es-PE", {
+    minimumFractionDigits: dec,
+    maximumFractionDigits: dec,
+  });
+}
+function fmtN(n) {
+  return n.toLocaleString("es-PE");
+}
+function abreviar(nombre) {
+  const p = nombre.split(" ");
+  return p[0] + (p[2] ? ", " + p[2][0] + "." : "");
+}
+function excelDateToJS(serial) {
+  if (serial instanceof Date) return serial;
+  if (typeof serial === "number") {
+    return new Date(Math.round((serial - 25569) * 86400 * 1000));
+  }
+  if (typeof serial === "string") return new Date(serial);
+  return null;
+}
+function formatoFecha(d) {
+  if (!d || isNaN(d)) return "";
+  return d.toLocaleDateString("es-PE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+function mesAnio(d) {
+  if (!d || isNaN(d)) return "";
+  return d.toLocaleDateString("es-PE", { month: "long", year: "numeric" });
+}
+function destroyChart(id) {
+  if (charts[id]) {
+    charts[id].destroy();
+    delete charts[id];
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// RENDERIZADO PRINCIPAL  —  recibe un objeto con la misma
+// estructura que DEFAULT
+// ─────────────────────────────────────────────────────────
+function renderDashboard(D) {
+  // ── Header y footer ────────────────────────────────────
+  const dashHdr = document.getElementById("dashHeaderDate");
+  if (dashHdr) dashHdr.textContent = D.fechaRango;
+  const footer = document.getElementById("footerBar");
+  const hoy = new Date().toLocaleDateString("es-PE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  footer.innerHTML = `Datos al ${hoy} &nbsp;|&nbsp; Fuente: ${D.archivoNom} &nbsp;|&nbsp; HCD`;
+
+  // ── KPIs principales totales ────────────────────────────
+  const totalSeg = D.atenciones.reduce((s, d) => s + d.seguro, 0);
+  const totalPar = D.atenciones.reduce((s, d) => s + d.particular, 0);
+  const total = totalSeg + totalPar;
+  document.querySelector(".kpi-card.total .value").textContent = fmtN(total);
+  document.querySelector(".kpi-card.seguro .value").textContent =
+    fmtN(totalSeg);
+  document.querySelector(".kpi-card.seguro .label").textContent =
+    `Seguro (${((totalSeg / total) * 100).toFixed(1)}%)`;
+  document.querySelector(".kpi-card.part .value").textContent = fmtN(totalPar);
+  document.querySelector(".kpi-card.part .label").textContent =
+    `Particular (${((totalPar / total) * 100).toFixed(1)}%)`;
+
+  // ── KPIs conversión ─────────────────────────────────────
+  const K = D.kpi;
+  document.querySelector(".kpi-card.conv .value").textContent =
+    K.tasaGlobal.toFixed(1) + "%";
+  document.getElementById("kpiUnidadesSinVender").textContent = fmtN(
+    K.totalDeriv - K.totalConv,
+  );
+  document.querySelector(".kpi-card.g-real .value").textContent =
+    "S/ " + fmtN(Math.round(K.ganReal));
+  document.querySelector(".kpi-card.g-perd .value").textContent =
+    "S/ " + fmtN(Math.round(K.ganPerd));
+
+  // ── KPIs sin stock ──────────────────────────────────────
+  // (sin stock: calculado desde sinStockData)
+  const ssProds = D.sinStockData.length;
+  const ssAfect = [...new Set(D.sinStockData.map((x) => x.producto))].length;
+  const ssLineas = D.sinStockData.reduce((s, x) => s + x.deriv, 0);
+  document.querySelector(".kpi-card.stk-prod .value").textContent =
+    fmtN(ssProds);
+  document.querySelector(".kpi-card.stk-aten .value").textContent =
+    fmtN(ssAfect);
+  document.querySelector(".kpi-card.stk-seg  .value").textContent =
+    fmtN(ssLineas);
+
+  // ── Doughnut center ─────────────────────────────────────
+  document.querySelector("#pieCenterLabel .big").textContent = fmtN(total);
+  // Pie legend
+  const pLegItems = document.querySelectorAll(".pie-legend-item");
+  if (pLegItems[0]) {
+    pLegItems[0].querySelector(".pie-label").innerHTML =
+      `Seguro &mdash; ${fmtN(totalSeg)} <span style="color:#2e86de;font-weight:700">${((totalSeg / total) * 100).toFixed(1)}%</span>`;
+    pLegItems[0].querySelector(".pie-progress-fill").style.width =
+      ((totalSeg / total) * 100).toFixed(1) + "%";
+  }
+  if (pLegItems[1]) {
+    pLegItems[1].querySelector(".pie-label").innerHTML =
+      `Particular &mdash; ${fmtN(totalPar)} <span style="color:#f39c12;font-weight:700">${((totalPar / total) * 100).toFixed(1)}%</span>`;
+    pLegItems[1].querySelector(".pie-progress-fill").style.width =
+      ((totalPar / total) * 100).toFixed(1) + "%";
+  }
+
+  // ── Conversión por tipo (insight boxes) ─────────────────
+  const ibSeg = document.querySelector(".insight-box.seg");
+  const ibPar = document.querySelector(".insight-box.par");
+  if (ibSeg) {
+    ibSeg.querySelector(".ib-big").textContent =
+      ((K.segConv / K.segDeriv) * 100).toFixed(1) + "%";
+    const rows = ibSeg.querySelectorAll(".ib-val");
+    if (rows[0]) rows[0].textContent = fmtN(K.segDeriv);
+    if (rows[1]) rows[1].textContent = fmtN(K.segConv);
+    if (rows[2]) rows[2].textContent = fmtN(K.segDeriv - K.segConv);
+    if (rows[3]) rows[3].textContent = "S/ " + fmt(K.segVentaNR);
+  }
+  if (ibPar) {
+    ibPar.querySelector(".ib-big").textContent =
+      ((K.parConv / K.parDeriv) * 100).toFixed(1) + "%";
+    const rows = ibPar.querySelectorAll(".ib-val");
+    if (rows[0]) rows[0].textContent = fmtN(K.parDeriv);
+    if (rows[1]) rows[1].textContent = fmtN(K.parConv);
+    if (rows[2]) rows[2].textContent = fmtN(K.parDeriv - K.parConv);
+    if (rows[3]) rows[3].textContent = "S/ " + fmt(K.parVentaNR);
+  }
+  // Alerta particular (panel rojo)
+  const alertPar = document.querySelector('[style*="fff8f8"] span');
+  if (alertPar) {
+    const parPct = ((K.parConv / K.parDeriv) * 100).toFixed(1);
+    alertPar.textContent = `⚠ Los pacientes Particulares convierten apenas el ${parPct}% de sus recetas en ventas.`;
+  }
+
+  // ── Proyecciones dinámicas ──────────────────────────────
+  renderProyecciones(K);
+
+  // ─── GRÁFICOS ──────────────────────────────────────────
+  renderBarChart(D.atenciones);
+  renderRankingTable(D.atenciones);
+  renderVentasMedChart(D.topMedVentas);
+  renderVentasBody(D.topMedVentas);
+  renderMedsIngresoChart(D.topMedIngreso);
+  renderMedsUnidadesChart(D.topMedUnidades);
+  renderSinStockBody(D.sinStockData);
+  renderPieChart(totalSeg, totalPar);
+  renderConvChart(D.convData);
+  renderLossBody(D.convData);
+  renderProdChart(D.topProductos);
+  renderProdBody(D.topProductos);
+  renderStrategias(D.estrategias, D.kpi);
+  renderInsights(D.estrategias, D.kpi);
+  renderDescuentoTable(D.estrategias);
+  renderMedPrioTable(D.medPriData, D.estrategias, D.kpi);
+}
+
+// ─────────────────────────────────────────────────────────
+// PROYECCIONES DINÁMICAS
+// ─────────────────────────────────────────────────────────
+function renderProyecciones(K) {
+  const parPct = K.parDeriv > 0 ? (K.parConv / K.parDeriv) * 100 : 0;
+  const segPct = K.segDeriv > 0 ? (K.segConv / K.segDeriv) * 100 : 0;
+  const sinConv = K.parDeriv - K.parConv;
+  const stockFail = Math.max(0, K.parStockFail);
+  const activas = Math.max(0, sinConv - stockFail);
+
+  // Margen neto por unidad = parVentaNR ÷ sinConv (calculado del Excel real)
+  // Para ingreso bruto usamos avgPrecioUnd; para ganancia neta usamos margenNeto
+  const margenNetoPorUnd =
+    sinConv > 0 ? K.parVentaNR / sinConv : K.avgPrecioUnd - K.avgCostoUnd;
+  const precioPorUnd = K.avgPrecioUnd || 21.12;
+
+  // ── Alerta ── reconstruye el HTML completo para que los IDs siempre existan
+  const stockText =
+    sinConv > 0
+      ? `${fmtN(stockFail)} (${((stockFail / sinConv) * 100).toFixed(1)}%) no se convirtieron por falta de stock`
+      : "sin datos de stock disponibles";
+  const alertTxtEl = document.getElementById("stratAlertText");
+  if (alertTxtEl) {
+    alertTxtEl.innerHTML =
+      `<strong>Brecha crítica de conversión:</strong> Los pacientes ` +
+      `Particulares convierten solo el ` +
+      `<strong id="parConvPct">${parPct.toFixed(1)}%</strong> de sus recetas frente al ` +
+      `<strong id="segConvPct">${segPct.toFixed(1)}%</strong> en Seguros. De las ` +
+      `<span id="parSinConvTotal">${fmtN(sinConv)}</span> unds. no vendidas, ` +
+      `<strong id="stockAlertText">${stockText}</strong> ` +
+      `— recuperables sin descuentos ni estrategias de precio. Las ` +
+      `<span id="parActivaText">${fmtN(activas)}</span> unds. restantes requieren ` +
+      `acciones activas de conversión.`;
+  }
+
+  // ── Tarjeta Actual ──
+  set("scActualPct", parPct.toFixed(1) + "%");
+  set("scActualUnds", `${fmtN(K.parConv)} / ${fmtN(K.parDeriv)} unds`);
+  set("scActualRev", `Potencial no realizado: S/ ${fmt(K.parVentaNR)}`);
+
+  // ── Escenarios ──
+  const escenarios = [
+    {
+      pct: 15,
+      elPct: "scConsPct",
+      elUnds: "scConsUnds",
+      elRev: "scConsRev",
+      elGain: "scConsGain",
+    },
+    {
+      pct: 25,
+      elPct: "scModPct",
+      elUnds: "scModUnds",
+      elRev: "scModRev",
+      elGain: "scModGain",
+    },
+    {
+      pct: 40,
+      elPct: "scOptPct",
+      elUnds: "scOptUnds",
+      elRev: "scOptRev",
+      elGain: "scOptGain",
+    },
+  ];
+
+  escenarios.forEach((sc) => {
+    const nuevasConv = Math.round((K.parDeriv * sc.pct) / 100);
+    const deltaConv = Math.max(0, nuevasConv - K.parConv);
+    const ingresoAdd = deltaConv * precioPorUnd;
+    const gananciaAdd = deltaConv * margenNetoPorUnd;
+    set(sc.elPct, sc.pct + "%");
+    set(sc.elUnds, "+" + fmtN(deltaConv) + " unds. más");
+    set(
+      sc.elRev,
+      "+ S/ " + fmtN(Math.round(ingresoAdd)) + " en ingreso adicional",
+    );
+    set(sc.elGain, "+ S/ " + fmtN(Math.round(gananciaAdd)) + " ganancia neta");
+  });
+}
+
+function set(id, txt) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = txt;
+}
+
+// ─────────────────────────────────────────────────────────
+// GRÁFICO: BAR CHART ATENCIONES POR MÉDICO
+// ─────────────────────────────────────────────────────────
+function renderBarChart(data) {
+  destroyChart("barChart");
+  const labels = data.map((d) => abreviar(d.medico));
+  const seguros = data.map((d) => d.seguro);
+  const parts = data.map((d) => d.particular);
+  const totales = data.map((d) => d.seguro + d.particular);
+  const ctx = document.getElementById("barChart").getContext("2d");
+  charts["barChart"] = new Chart(ctx, {
+    type: "bar",
     data: {
       labels,
       datasets: [
         {
-          label: 'Seguro',
+          label: "Seguro",
           data: seguros,
-          backgroundColor: '#2e86de',
+          backgroundColor: "#2e86de",
           borderRadius: 4,
           borderSkipped: false,
         },
         {
-          label: 'Particular',
+          label: "Particular",
           data: parts,
-          backgroundColor: '#f39c12',
+          backgroundColor: "#f39c12",
           borderRadius: 4,
           borderSkipped: false,
-        }
-      ]
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => data[items[0].dataIndex].medico,
+            afterBody: (items) => `Total: ${totales[items[0].dataIndex]}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            font: { size: 11 },
+            color: "#4b5563",
+            maxRotation: 35,
+            minRotation: 25,
+          },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: "#f0f2f5" },
+          ticks: { font: { size: 11 }, color: "#9ca3af", stepSize: 5 },
+        },
+      },
+    },
+  });
+}
+
+// RANKING TABLE
+function renderRankingTable(data) {
+  const tbody = document.getElementById("rankingBody");
+  tbody.innerHTML = "";
+  const maxTotal = Math.max(...data.map((d) => d.seguro + d.particular));
+  data.slice(0, 10).forEach((d, i) => {
+    const total = d.seguro + d.particular;
+    const segW = ((d.seguro / maxTotal) * 60).toFixed(1);
+    const parW = ((d.particular / maxTotal) * 60).toFixed(1);
+    const isTop = i < 3;
+    tbody.innerHTML += `<tr>
+      <td><span class="rank-num ${isTop ? "top" : ""}">${i + 1}</span></td>
+      <td>
+        <div class="medico-name">${d.medico.split(" ").slice(0, 2).join(" ")}</div>
+        <div class="mini-bar-wrap">
+          <div class="mini-bar seg" style="width:${segW}px"></div>
+          <div class="mini-bar par" style="width:${parW}px"></div>
+        </div>
+      </td>
+      <td class="num"><span class="pill seg">${d.seguro}</span></td>
+      <td class="num"><span class="pill par">${d.particular}</span></td>
+      <td class="num" style="color:#1a2035;font-size:.88rem">${total}</td>
+    </tr>`;
+  });
+}
+
+// VENTAS MED CHART
+function renderVentasMedChart(data) {
+  destroyChart("ventasMedChart");
+  const ventasColors = data.map(
+    (_, i) =>
+      `rgb(${Math.round(30 + i * 8)},${Math.round(106 + i * 3)},${Math.round(255 - (i / data.length) * 130)})`,
+  );
+  const ctx = document.getElementById("ventasMedChart").getContext("2d");
+  charts["ventasMedChart"] = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: [...data].reverse().map((d) => d.abr),
+      datasets: [
+        {
+          label: "Ventas (S/)",
+          data: [...data].reverse().map((d) => d.ventas),
+          backgroundColor: [...ventasColors].reverse(),
+          borderRadius: 4,
+          borderSkipped: false,
+        },
+      ],
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              const idx = data.length - 1 - items[0].dataIndex;
+              return data[idx].medico;
+            },
+            afterBody: (items) => {
+              const idx = data.length - 1 - items[0].dataIndex;
+              const d = data[idx];
+              return [
+                `Atenciones: ${d.atenciones}`,
+                `Unds.: ${d.unidades}`,
+                `Ticket prom.: S/ ${d.ticket.toFixed(2)}`,
+              ];
+            },
+            label: (item) =>
+              ` S/ ${item.raw.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: { color: "#f0f2f5" },
+          ticks: {
+            font: { size: 11 },
+            color: "#9ca3af",
+            callback: (v) => "S/ " + v.toLocaleString("es-PE"),
+          },
+        },
+        y: {
+          grid: { display: false },
+          ticks: { font: { size: 11 }, color: "#374151" },
+        },
+      },
+    },
+  });
+}
+
+// VENTAS BODY TABLE
+function renderVentasBody(data) {
+  const tbody = document.getElementById("ventasBody");
+  tbody.innerHTML = "";
+  data.forEach((d, i) => {
+    const isTop = i < 3;
+    tbody.innerHTML += `<tr>
+      <td><span class="rank-num ${isTop ? "top" : ""}">${i + 1}</span>
+          <span style="font-size:.78rem;font-weight:600;">${d.medico.split(" ").slice(0, 2).join(" ")}</span></td>
+      <td class="r" style="font-size:.78rem;">${d.atenciones}</td>
+      <td class="r" style="font-size:.78rem;">${d.unidades}</td>
+      <td class="r"><span class="ticket-val">S/ ${d.ticket.toFixed(2)}</span></td>
+      <td class="r" style="font-weight:700;color:#1a2035;">S/ ${d.ventas.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</td>
+    </tr>`;
+  });
+}
+
+// TOP MEDS INGRESO CHART
+function renderMedsIngresoChart(data) {
+  destroyChart("medsIngresoChart");
+  const ctx = document.getElementById("medsIngresoChart").getContext("2d");
+  charts["medsIngresoChart"] = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: [...data].reverse().map((p) => p.producto),
+      datasets: [
+        {
+          label: "Ingreso (S/)",
+          data: [...data].reverse().map((p) => p.ingreso),
+          backgroundColor: "#2e86de",
+          borderRadius: 4,
+          borderSkipped: false,
+        },
+      ],
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (item) => ` S/ ${item.raw.toFixed(2)}`,
+            afterBody: (items) => {
+              const idx = data.length - 1 - items[0].dataIndex;
+              return `Unds. vendidas: ${data[idx].unidades}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: { color: "#f0f2f5" },
+          ticks: {
+            font: { size: 10 },
+            color: "#9ca3af",
+            callback: (v) => "S/ " + v,
+          },
+        },
+        y: {
+          grid: { display: false },
+          ticks: { font: { size: 10 }, color: "#374151" },
+        },
+      },
+    },
+  });
+}
+
+// TOP MEDS UNIDADES CHART
+function renderMedsUnidadesChart(data) {
+  destroyChart("medsUnidadesChart");
+  const ctx = document.getElementById("medsUnidadesChart").getContext("2d");
+  charts["medsUnidadesChart"] = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: [...data].reverse().map((p) => p.producto),
+      datasets: [
+        {
+          label: "Unds.",
+          data: [...data].reverse().map((p) => p.unidades),
+          backgroundColor: "#8b5cf6",
+          borderRadius: 4,
+          borderSkipped: false,
+        },
+      ],
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (item) => ` ${item.raw} unds.`,
+            afterBody: (items) => {
+              const idx = data.length - 1 - items[0].dataIndex;
+              return `Ingreso: S/ ${data[idx].ingreso.toFixed(2)}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: { color: "#f0f2f5" },
+          ticks: { font: { size: 10 }, color: "#9ca3af" },
+        },
+        y: {
+          grid: { display: false },
+          ticks: { font: { size: 10 }, color: "#374151" },
+        },
+      },
+    },
+  });
+}
+
+// SIN STOCK TABLE
+function renderSinStockBody(data) {
+  const tbody = document.getElementById("sinstockBody");
+  tbody.innerHTML = "";
+  data.forEach((d, i) => {
+    const pct = d.deriv > 0 ? ((d.conv / d.deriv) * 100).toFixed(1) : "0.0";
+    const p = parseFloat(pct);
+    let rowCls = "",
+      convCls = "",
+      convIcon = "";
+    if (p === 0) {
+      rowCls = "crit";
+      convCls = "c-zero";
+      convIcon = "✗";
+    } else if (p < 50) {
+      rowCls = "warn";
+      convCls = "c-low";
+      convIcon = "▲";
+    } else if (p < 100) {
+      rowCls = "";
+      convCls = "c-mid";
+      convIcon = "●";
+    } else {
+      rowCls = "";
+      convCls = "c-full";
+      convIcon = "✓";
+    }
+    tbody.innerHTML += `<tr class="${rowCls}">
+      <td style="color:#9ca3af;font-size:.75rem;font-weight:600;">${i + 1}</td>
+      <td style="font-weight:600;font-size:.8rem;">${d.producto}</td>
+      <td class="r"><span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:700;">${d.veces}×</span></td>
+      <td class="r" style="font-size:.8rem;">${d.deriv}</td>
+      <td class="r" style="font-size:.8rem;">${d.conv}</td>
+      <td class="r"><span class="conv-ring ${convCls}">${convIcon} ${pct}%</span></td>
+    </tr>`;
+  });
+}
+
+// PIE CHART
+function renderPieChart(seg, par) {
+  destroyChart("pieChart");
+  const ctx = document.getElementById("pieChart").getContext("2d");
+  charts["pieChart"] = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: ["Seguro", "Particular"],
+      datasets: [
+        {
+          data: [seg, par],
+          backgroundColor: ["#2e86de", "#f39c12"],
+          hoverBackgroundColor: ["#1a6fc4", "#d4870a"],
+          borderWidth: 0,
+          hoverOffset: 6,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: "72%",
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (item) => {
+              const val = item.raw;
+              const pct = ((val / (seg + par)) * 100).toFixed(1);
+              return ` ${val} atenciones (${pct}%)`;
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+// CONV CHART
+function renderConvChart(data) {
+  destroyChart("convChart");
+  const ctx = document.getElementById("convChart").getContext("2d");
+  charts["convChart"] = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: data.map((d) => d.abr),
+      datasets: [
+        {
+          label: "Convertidas",
+          data: data.map((d) => d.conv),
+          backgroundColor: "#27ae60",
+          borderRadius: 0,
+          borderSkipped: false,
+        },
+        {
+          label: "Sin convertir",
+          data: data.map((d) => d.sinConv),
+          backgroundColor: "#e74c3c",
+          borderRadius: 4,
+          borderSkipped: "bottom",
+        },
+      ],
     },
     options: {
       responsive: true,
@@ -60,488 +800,971 @@
           callbacks: {
             title: (items) => data[items[0].dataIndex].medico,
             afterBody: (items) => {
-              const i = items[0].dataIndex;
-              return `Total: ${totales[i]}`;
-            }
-          }
-        }
+              const d = data[items[0].dataIndex];
+              return [
+                `Total deriv.: ${d.deriv}`,
+                `Tasa conv.: ${d.pct}%`,
+                `Pot. no realiz.: S/ ${d.ganPerd.toFixed(2)}`,
+              ];
+            },
+          },
+        },
       },
       scales: {
         x: {
+          stacked: true,
           grid: { display: false },
           ticks: {
             font: { size: 11 },
-            color: '#4b5563',
+            color: "#4b5563",
             maxRotation: 35,
             minRotation: 25,
-          }
+          },
         },
         y: {
+          stacked: true,
           beginAtZero: true,
-          grid: { color: '#f0f2f5' },
-          ticks: {
-            font: { size: 11 },
-            color: '#9ca3af',
-            stepSize: 5,
-          }
-        }
-      }
-    }
-  });
-
-  // ── DATOS: TOP MÉDICOS POR VENTAS ─────────────────────────────────────────
-  const topMedVentas = [
-    { medico: 'ALARCON CANOVA STEVEN',           abr: 'Alarcon',   ventas: 9024.64, atenciones: 25, ticket: 360.99, unidades: 819 },
-    { medico: 'SILVA MARROQUIN MARTHA',           abr: 'Silva',     ventas: 4716.79, atenciones: 73, ticket:  64.61, unidades: 199 },
-    { medico: 'YAÑEZ CESTI MARIANO MANUEL',       abr: 'Yañez',     ventas: 3332.40, atenciones: 20, ticket: 166.62, unidades: 405 },
-    { medico: 'MEDINA ARRUNATEGUI CESAR MARTIN',  abr: 'Medina',    ventas: 3149.34, atenciones: 27, ticket: 116.64, unidades: 448 },
-    { medico: 'ALVARADO GUERRERO ALEMBERT',       abr: 'Alvarado',  ventas: 2951.13, atenciones: 20, ticket: 147.56, unidades: 244 },
-    { medico: 'AYALA ROSALES MANUEL ALEXANDER',   abr: 'Ayala',     ventas: 2148.54, atenciones: 10, ticket: 214.85, unidades:  46 },
-    { medico: 'LEIVA HERRADA CLEVER HUMBERTO',    abr: 'Leiva',     ventas: 1637.45, atenciones: 37, ticket:  44.26, unidades:  67 },
-    { medico: 'GUERRERO AMAYA EDUARDO',           abr: 'Guerrero',  ventas:  442.09, atenciones: 17, ticket:  26.01, unidades: 108 },
-    { medico: 'SALAZAR HERNANDEZ OMAR GREGORY',   abr: 'Salazar',   ventas:  369.14, atenciones:  5, ticket:  73.83, unidades:   6 },
-    { medico: 'GALLOSA PALACIOS MARIA EUGUENIA',  abr: 'Gallosa',   ventas:  139.35, atenciones:  2, ticket:  69.68, unidades:  10 },
-  ];
-
-  // ── DATOS: TOP MEDICAMENTOS ────────────────────────────────────────────────
-  const topMedIngreso = [
-    { producto: 'LANZOPRAL HELIPACK',       ingreso: 1906.10, unidades:  42 },
-    { producto: 'CINITAL 1MG TAB',          ingreso: 1384.65, unidades: 306 },
-    { producto: 'MAGAL D JBE',              ingreso: 1304.05, unidades:  21 },
-    { producto: 'EZOLIUM 40MG TAB',         ingreso: 1177.08, unidades: 116 },
-    { producto: 'LEFLUMIDE 20MG TAB',       ingreso: 1027.80, unidades:  45 },
-    { producto: 'TRI AZIT 200MG JBE 30ML',  ingreso:  934.41, unidades:   7 },
-    { producto: 'BICERTO TAB 150MG',         ingreso:  884.00, unidades:  80 },
-    { producto: 'CONCOR 5MG TAB',           ingreso:  789.90, unidades: 120 },
-    { producto: 'EXFORGE HCT 10/160/12.5',  ingreso:  744.60, unidades:  60 },
-    { producto: 'MILPAX SAB CER JBE',       ingreso:  721.11, unidades:   9 },
-  ];
-  const topMedUnidades = [
-    { producto: 'CINITAL 1MG TAB',          unidades: 306, ingreso: 1384.65 },
-    { producto: 'CONCOR 5MG TAB',           unidades: 120, ingreso:  789.90 },
-    { producto: 'EZOLIUM 40MG TAB',         unidades: 116, ingreso: 1177.08 },
-    { producto: 'BICERTO TAB 150MG',         unidades:  80, ingreso:  884.00 },
-    { producto: 'TRICOFAR 500MG TAB',       unidades:  78, ingreso:  432.30 },
-    { producto: 'KETOPROFENO 100MG TAB',    unidades:  71, ingreso:  230.99 },
-    { producto: 'MALTOFER 100MG TAB',       unidades:  60, ingreso:  180.00 },
-    { producto: 'EXFORGE HCT 10/160/12.5',  unidades:  60, ingreso:  744.60 },
-    { producto: 'DOLORAL 400MG TAB',        unidades:  55, ingreso:  122.75 },
-    { producto: 'ZALDIAR 37.5/325MG TAB',   unidades:  49, ingreso:  381.71 },
-  ];
-
-  // ── DATOS: SIN STOCK ───────────────────────────────────────────────────────
-  const sinStockData = [
-    { producto: 'PANADOL INFANTIL JBE',           veces: 11, deriv: 14,  conv:  6 },
-    { producto: 'GLYCOLAX X 320GR PVO',           veces:  9, deriv: 115, conv:  0 },
-    { producto: 'FRUTIPED PEDIATRICO FRESA',      veces:  8, deriv: 22,  conv: 13 },
-    { producto: 'KETOPROFENO 100MG TAB',          veces:  6, deriv: 71,  conv: 71 },
-    { producto: 'NEO NISOPREX 15MG/5ML JBE',     veces:  6, deriv: 10,  conv:  2 },
-    { producto: 'TRI AZIT 200MG JBE 15ML',       veces:  5, deriv:  5,  conv:  3 },
-    { producto: 'ENTEROGERMINA X 5ML AMB BEB',   veces:  5, deriv: 46,  conv: 10 },
-    { producto: 'CONCOR 5MG TAB',                veces:  4, deriv: 55,  conv: 30 },
-    { producto: 'DICLOXACILINA 250MG/5ML JBE',   veces:  4, deriv:  6,  conv:  2 },
-    { producto: 'FORTZINK 10MG/ML GOTAS',        veces:  3, deriv:  3,  conv:  0 },
-    { producto: 'DOLORAL FORTE 200MG/5ML JBE',   veces:  3, deriv:  3,  conv:  1 },
-    { producto: 'FLACORT 22.75MG/ML GOT',        veces:  3, deriv:  3,  conv:  0 },
-    { producto: 'FLOGOCOX 120MG COMP',           veces:  3, deriv: 21,  conv:  0 },
-    { producto: 'FORTZINK 20MG/5ML JBE',         veces:  3, deriv:  3,  conv:  1 },
-    { producto: 'GESLUTIN 200MG CAP',            veces:  3, deriv: 64,  conv:  0 },
-    { producto: 'DOLORAL 100MG/5ML JBE',         veces:  3, deriv:  3,  conv:  1 },
-    { producto: 'ELAZIT PED 200MG/5ML JBE',     veces:  3, deriv:  3,  conv:  1 },
-    { producto: 'CEFACLOR 250/5ML X75ML',        veces:  2, deriv:  2,  conv:  0 },
-    { producto: 'BIOGAIA VIT D3',                veces:  2, deriv:  2,  conv:  0 },
-    { producto: 'DEGRALER 2.5MG/5ML JBE',       veces:  2, deriv:  2,  conv:  1 },
-  ];
-
-  // ── CHART: VENTAS POR MÉDICO (horizontal) ─────────────────────────────────
-  const ventasMedCtx = document.getElementById('ventasMedChart').getContext('2d');
-  const ventasColors = topMedVentas.map((_, i) => {
-    const intensity = Math.round(255 - (i / topMedVentas.length) * 130);
-    return `rgb(${Math.round(30 + i*8)}, ${Math.round(106 + i*3)}, ${intensity})`;
-  });
-  new Chart(ventasMedCtx, {
-    type: 'bar',
-    data: {
-      labels: [...topMedVentas].reverse().map(d => d.abr),
-      datasets: [{
-        label: 'Ventas (S/)',
-        data: [...topMedVentas].reverse().map(d => d.ventas),
-        backgroundColor: [...ventasColors].reverse(),
-        borderRadius: 4,
-        borderSkipped: false,
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            title: (items) => {
-              const idx = topMedVentas.length - 1 - items[0].dataIndex;
-              return topMedVentas[idx].medico;
-            },
-            afterBody: (items) => {
-              const idx = topMedVentas.length - 1 - items[0].dataIndex;
-              const d = topMedVentas[idx];
-              return [`Atenciones: ${d.atenciones}`, `Unidades: ${d.unidades}`, `Ticket prom: S/ ${d.ticket}`];
-            },
-            label: (item) => ` S/ ${item.raw.toLocaleString('es-PE', {minimumFractionDigits:2})}`
-          }
-        }
-      },
-      scales: {
-        x: {
-          beginAtZero: true,
-          grid: { color: '#f0f2f5' },
-          ticks: { font:{size:11}, color:'#9ca3af', callback: v => 'S/ ' + v.toLocaleString('es-PE') }
+          grid: { color: "#f0f2f5" },
+          ticks: { font: { size: 11 }, color: "#9ca3af" },
         },
-        y: { grid:{display:false}, ticks:{font:{size:11}, color:'#374151'} }
-      }
-    }
-  });
-
-  // ── TABLA: VENTAS DETALLE ──────────────────────────────────────────────────
-  const ventasBody = document.getElementById('ventasBody');
-  topMedVentas.forEach((d, i) => {
-    const isTop = i < 3;
-    ventasBody.innerHTML += `
-      <tr>
-        <td>
-          <span class="rank-num ${isTop?'top':''}">${i+1}</span>
-          <span style="font-size:.78rem;font-weight:600;">${d.medico.split(' ').slice(0,2).join(' ')}</span>
-        </td>
-        <td class="r" style="font-size:.78rem;">${d.atenciones}</td>
-        <td class="r" style="font-size:.78rem;">${d.unidades}</td>
-        <td class="r"><span class="ticket-val">S/ ${d.ticket.toFixed(2)}</span></td>
-        <td class="r" style="font-weight:700;color:#1a2035;">S/ ${d.ventas.toLocaleString('es-PE',{minimumFractionDigits:2})}</td>
-      </tr>`;
-  });
-
-  // ── CHART: TOP MEDS POR INGRESO ────────────────────────────────────────────
-  const medsIngresoCtx = document.getElementById('medsIngresoChart').getContext('2d');
-  new Chart(medsIngresoCtx, {
-    type: 'bar',
-    data: {
-      labels: [...topMedIngreso].reverse().map(p => p.producto),
-      datasets: [{
-        label: 'Ingreso (S/)',
-        data: [...topMedIngreso].reverse().map(p => p.ingreso),
-        backgroundColor: '#2e86de',
-        borderRadius: 4,
-        borderSkipped: false,
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (item) => ` S/ ${item.raw.toFixed(2)}`,
-            afterBody: (items) => {
-              const idx = topMedIngreso.length - 1 - items[0].dataIndex;
-              return `Unidades vendidas: ${topMedIngreso[idx].unidades}`;
-            }
-          }
-        }
       },
-      scales: {
-        x: { beginAtZero:true, grid:{color:'#f0f2f5'}, ticks:{font:{size:10}, color:'#9ca3af', callback: v => 'S/ '+v} },
-        y: { grid:{display:false}, ticks:{font:{size:10}, color:'#374151'} }
-      }
-    }
-  });
-
-  // ── CHART: TOP MEDS POR UNIDADES ──────────────────────────────────────────
-  const medsUnidadesCtx = document.getElementById('medsUnidadesChart').getContext('2d');
-  new Chart(medsUnidadesCtx, {
-    type: 'bar',
-    data: {
-      labels: [...topMedUnidades].reverse().map(p => p.producto),
-      datasets: [{
-        label: 'Unidades',
-        data: [...topMedUnidades].reverse().map(p => p.unidades),
-        backgroundColor: '#8b5cf6',
-        borderRadius: 4,
-        borderSkipped: false,
-      }]
     },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (item) => ` ${item.raw} unidades`,
-            afterBody: (items) => {
-              const idx = topMedUnidades.length - 1 - items[0].dataIndex;
-              return `Ingreso: S/ ${topMedUnidades[idx].ingreso.toFixed(2)}`;
-            }
-          }
-        }
-      },
-      scales: {
-        x: { beginAtZero:true, grid:{color:'#f0f2f5'}, ticks:{font:{size:10}, color:'#9ca3af'} },
-        y: { grid:{display:false}, ticks:{font:{size:10}, color:'#374151'} }
-      }
-    }
   });
+}
 
-  // ── TABLA: SIN STOCK ──────────────────────────────────────────────────────
-  const sinstockBody = document.getElementById('sinstockBody');
-  sinStockData.forEach((d, i) => {
-    const pct = d.deriv > 0 ? (d.conv / d.deriv * 100).toFixed(1) : '0.0';
-    const p = parseFloat(pct);
-    let rowCls = '', convCls = '', convIcon = '';
-    if (p === 0)       { rowCls = 'crit'; convCls = 'c-zero'; convIcon = '✗'; }
-    else if (p < 50)   { rowCls = 'warn'; convCls = 'c-low';  convIcon = '▲'; }
-    else if (p < 100)  { rowCls = '';     convCls = 'c-mid';  convIcon = '●'; }
-    else               { rowCls = '';     convCls = 'c-full'; convIcon = '✓'; }
+// LOSS BODY TABLE
+function renderLossBody(data) {
+  const tbody = document.getElementById("lossBody");
+  tbody.innerHTML = "";
+  [...data]
+    .sort((a, b) => b.ganPerd - a.ganPerd)
+    .forEach((d) => {
+      const cls = d.pct >= 60 ? "high" : d.pct >= 35 ? "mid" : "low";
+      tbody.innerHTML += `<tr>
+      <td style="font-size:.78rem;font-weight:600;">${d.medico.split(" ").slice(0, 2).join(" ")}</td>
+      <td class="r"><span class="pct-badge ${cls}">${d.pct}%</span></td>
+      <td class="r"><span class="loss-amount">S/ ${d.ganPerd.toFixed(2)}</span></td>
+    </tr>`;
+    });
+}
 
-    sinstockBody.innerHTML += `
-      <tr class="${rowCls}">
-        <td style="color:#9ca3af;font-size:.75rem;font-weight:600;">${i+1}</td>
-        <td style="font-weight:600;font-size:.8rem;">${d.producto}</td>
-        <td class="r">
-          <span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:700;">
-            ${d.veces}×
-          </span>
-        </td>
-        <td class="r" style="font-size:.8rem;">${d.deriv}</td>
-        <td class="r" style="font-size:.8rem;">${d.conv}</td>
-        <td class="r">
-          <span class="conv-ring ${convCls}">${convIcon} ${pct}%</span>
-        </td>
-      </tr>`;
-  });
-
-  // ── DOUGHNUT CHART ────────────────────────────────────────────────────────
-  const pieCtx = document.getElementById('pieChart').getContext('2d');
-  new Chart(pieCtx, {
-    type: 'doughnut',
+// PROD CHART
+function renderProdChart(data) {
+  destroyChart("prodChart");
+  const ctx = document.getElementById("prodChart").getContext("2d");
+  charts["prodChart"] = new Chart(ctx, {
+    type: "bar",
     data: {
-      labels: ['Seguro', 'Particular'],
-      datasets: [{
-        data: [125, 116],
-        backgroundColor: ['#2e86de', '#f39c12'],
-        hoverBackgroundColor: ['#1a6fc4', '#d4870a'],
-        borderWidth: 0,
-        hoverOffset: 6,
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '72%',
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (item) => {
-              const val = item.raw;
-              const pct = (val / 241 * 100).toFixed(1);
-              return ` ${val} atenciones (${pct}%)`;
-            }
-          }
-        }
-      }
-    }
-  });
-
-  // ── DATOS CONVERSIÓN ──────────────────────────────────────────────────────
-  // Ordenado por derivadas desc
-  const convData = [
-    { medico: 'ALARCON CANOVA STEVEN',           abr: 'Alarcon',   deriv: 1157, conv: 819, sinConv: 338, pct: 70.8, ganReal: 5552.72, ganPerd: 1105.14 },
-    { medico: 'ALVARADO GUERRERO ALEMBERT',       abr: 'Alvarado',  deriv: 969,  conv: 244, sinConv: 725, pct: 25.2, ganReal: 1853.50, ganPerd: 1878.36 },
-    { medico: 'YAÑEZ CESTI MARIANO MANUEL',       abr: 'Yañez',     deriv: 865,  conv: 405, sinConv: 460, pct: 46.8, ganReal: 1690.95, ganPerd:  437.87 },
-    { medico: 'MEDINA ARRUNATEGUI CESAR MARTIN',  abr: 'Medina',    deriv: 621,  conv: 448, sinConv: 173, pct: 72.1, ganReal: 2042.17, ganPerd:  360.90 },
-    { medico: 'GUERRERO AMAYA EDUARDO',           abr: 'Guerrero',  deriv: 594,  conv: 108, sinConv: 486, pct: 18.2, ganReal:  249.59, ganPerd: 1289.00 },
-    { medico: 'SILVA MARROQUIN MARTHA',           abr: 'Silva',     deriv: 533,  conv: 199, sinConv: 334, pct: 37.3, ganReal: 2701.12, ganPerd: 1046.98 },
-    { medico: 'LEIVA HERRADA CLEVER HUMBERTO',    abr: 'Leiva',     deriv: 130,  conv: 67,  sinConv:  63, pct: 51.5, ganReal:  759.97, ganPerd:  415.17 },
-    { medico: 'RAMOS RODRIGUEZ INGRID JOYCE',     abr: 'Ramos',     deriv: 121,  conv: 0,   sinConv: 121, pct:  0.0, ganReal:    0.00, ganPerd:  109.69 },
-    { medico: 'AYALA ROSALES MANUEL ALEXANDER',   abr: 'Ayala',     deriv: 117,  conv: 46,  sinConv:  71, pct: 39.3, ganReal: 1450.29, ganPerd:  301.57 },
-    { medico: 'SALAZAR HERNANDEZ OMAR GREGORY',   abr: 'Salazar',   deriv:  30,  conv: 6,   sinConv:  24, pct: 20.0, ganReal:  259.18, ganPerd:  217.86 },
-    { medico: 'GALLOSA PALACIOS MARIA EUGUENIA',  abr: 'Gallosa',   deriv:  16,  conv: 10,  sinConv:   6, pct: 62.5, ganReal:   80.51, ganPerd:   42.46 },
-    { medico: 'HERRERA OLIVARES MARTIN',          abr: 'Herrera',   deriv:  11,  conv: 0,   sinConv:  11, pct:  0.0, ganReal:    0.00, ganPerd:   18.69 },
-    { medico: 'CORDOVA CUEVA LIZ BRENDA',         abr: 'Cordova',   deriv:   8,  conv: 0,   sinConv:   8, pct:  0.0, ganReal:    0.00, ganPerd:    3.92 },
-  ];
-
-  const topProductos = [
-    { producto: 'OSTEOSYL 150MG TAB',         sinConv:  90, totSin: 3967.20, ganPerd: 793.80 },
-    { producto: 'DALGIET 2MG TAB',            sinConv:  30, totSin: 2708.40, ganPerd: 506.40 },
-    { producto: 'GESLUTIN 200MG CAP',         sinConv:  64, totSin:  717.04, ganPerd: 429.68 },
-    { producto: 'EZOLIUM 40MG TAB',           sinConv:  46, totSin:  643.38, ganPerd: 423.96 },
-    { producto: 'HANALGEZE 60MG INY',         sinConv:  10, totSin:  607.98, ganPerd: 365.78 },
-    { producto: 'MAGAL D JBE',                sinConv:   4, totSin:  319.00, ganPerd: 253.56 },
-    { producto: 'HIALUDRIN SOB NARANJA',      sinConv: 180, totSin: 1022.40, ganPerd: 212.40 },
-    { producto: 'ENTEROGERMINA 5ML',          sinConv:  87, totSin:  468.73, ganPerd: 200.77 },
-    { producto: 'NORFLEX AMP 60MG',           sinConv:   6, totSin:  257.46, ganPerd: 196.26 },
-    { producto: 'MAXUCAL D 400UI TAB',        sinConv:  90, totSin:  256.20, ganPerd: 162.60 },
-  ];
-
-  // ── STACKED BAR: CONVERSIÓN POR MÉDICO ────────────────────────────────────
-  const convCtx = document.getElementById('convChart').getContext('2d');
-  new Chart(convCtx, {
-    type: 'bar',
-    data: {
-      labels: convData.map(d => d.abr),
+      labels: [...data].reverse().map((p) => p.producto),
       datasets: [
         {
-          label: 'Convertidas',
-          data: convData.map(d => d.conv),
-          backgroundColor: '#27ae60',
-          borderRadius: 0,
+          label: "Pot. no realizado (S/)",
+          data: [...data].reverse().map((p) => p.ganPerd),
+          backgroundColor: (ctx) => {
+            const v = ctx.raw;
+            return v >= 500 ? "#e74c3c" : v >= 300 ? "#e67e22" : "#f39c12";
+          },
+          borderRadius: 4,
           borderSkipped: false,
         },
-        {
-          label: 'Sin convertir',
-          data: convData.map(d => d.sinConv),
-          backgroundColor: '#e74c3c',
-          borderRadius: 4,
-          borderSkipped: 'bottom',
-        }
-      ]
+      ],
     },
     options: {
+      indexAxis: "y",
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
         tooltip: {
-          callbacks: {
-            title: (items) => convData[items[0].dataIndex].medico,
-            afterBody: (items) => {
-              const d = convData[items[0].dataIndex];
-              return [
-                `Total derivadas: ${d.deriv}`,
-                `Tasa conversión: ${d.pct}%`,
-                `Potencial no realizado: S/ ${d.ganPerd.toFixed(2)}`
-              ];
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          stacked: true,
-          grid: { display: false },
-          ticks: { font: { size: 11 }, color: '#4b5563', maxRotation: 35, minRotation: 25 }
+          callbacks: { label: (item) => ` S/ ${item.raw.toFixed(2)}` },
         },
-        y: {
-          stacked: true,
-          beginAtZero: true,
-          grid: { color: '#f0f2f5' },
-          ticks: { font: { size: 11 }, color: '#9ca3af' }
-        }
-      }
-    }
-  });
-
-  // ── TABLA: GANANCIA PERDIDA POR MÉDICO ────────────────────────────────────
-  const lossBody = document.getElementById('lossBody');
-  const lossOrdered = [...convData].sort((a,b) => b.ganPerd - a.ganPerd);
-  lossOrdered.forEach(d => {
-    let cls = d.pct >= 60 ? 'high' : d.pct >= 35 ? 'mid' : 'low';
-    lossBody.innerHTML += `
-      <tr>
-        <td style="font-size:.78rem;font-weight:600;">${d.medico.split(' ').slice(0,2).join(' ')}</td>
-        <td class="r"><span class="pct-badge ${cls}">${d.pct}%</span></td>
-        <td class="r"><span class="loss-amount">S/ ${d.ganPerd.toFixed(2)}</span></td>
-      </tr>`;
-  });
-
-  // ── HORIZONTAL BAR: TOP PRODUCTOS ─────────────────────────────────────────
-  const prodCtx = document.getElementById('prodChart').getContext('2d');
-  new Chart(prodCtx, {
-    type: 'bar',
-    data: {
-      labels: [...topProductos].reverse().map(p => p.producto),
-      datasets: [{
-        label: 'Potencial no realizado (S/)',
-        data: [...topProductos].reverse().map(p => p.ganPerd),
-        backgroundColor: (ctx) => {
-          const v = ctx.raw;
-          if (v >= 500) return '#e74c3c';
-          if (v >= 300) return '#e67e22';
-          return '#f39c12';
-        },
-        borderRadius: 4,
-        borderSkipped: false,
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (item) => ` S/ ${item.raw.toFixed(2)}`
-          }
-        }
       },
       scales: {
         x: {
           beginAtZero: true,
-          grid: { color: '#f0f2f5' },
+          grid: { color: "#f0f2f5" },
           ticks: {
-            font: { size: 11 }, color: '#9ca3af',
-            callback: (v) => 'S/ ' + v
-          }
+            font: { size: 11 },
+            color: "#9ca3af",
+            callback: (v) => "S/ " + v,
+          },
         },
         y: {
           grid: { display: false },
-          ticks: { font: { size: 11 }, color: '#374151' }
-        }
+          ticks: { font: { size: 11 }, color: "#374151" },
+        },
+      },
+    },
+  });
+}
+
+// PROD BODY TABLE
+function renderProdBody(data) {
+  const tbody = document.getElementById("prodBody");
+  tbody.innerHTML = "";
+  data.forEach((p) => {
+    tbody.innerHTML += `<tr>
+      <td style="font-size:.75rem;font-weight:600;max-width:140px;">${p.producto}</td>
+      <td class="r" style="font-size:.78rem;">${p.sinConv}</td>
+      <td class="r" style="font-size:.78rem;">S/ ${p.totSin.toFixed(2)}</td>
+      <td class="r"><span class="loss-amount" style="font-size:.82rem;">S/ ${p.ganPerd.toFixed(2)}</span></td>
+    </tr>`;
+  });
+}
+
+// ─────────────────────────────────────────────────────────
+// INSIGHTS CLAVE — renderizado dinámico
+// ─────────────────────────────────────────────────────────
+function renderInsights(E, K) {
+  const row = document.getElementById("insightRow");
+  if (!row) return;
+
+  const sinConv = K.parDeriv - K.parConv;
+  const stockPct = sinConv > 0 ? ((E.stockUnds / sinConv) * 100).toFixed(1) : 0;
+  const badPct =
+    E.nAltoMargen > 0
+      ? (100 - (E.nAltoMargen / (E.nAltoMargen + E.nBajoMargen)) * 100).toFixed(
+          0,
+        )
+      : 0;
+
+  // Benchmark: mejor médico Particular
+  const bench = E.mejorMedPar;
+  const benchNom = bench ? bench.medico.split(" ").slice(0, 2).join(" ") : "—";
+  const benchEsp = bench ? bench.especialidad || "" : "";
+  const benchPct = bench ? bench.pct.toFixed(1) + "%" : "—";
+  const avgParPct =
+    K.parDeriv > 0 ? ((K.parConv / K.parDeriv) * 100).toFixed(1) : 0;
+
+  row.innerHTML = `
+    <div class="insight-card ins-red">
+      <div class="insight-icon">📦</div>
+      <div>
+        <div class="insight-title">
+          ${fmtN(E.stockUnds)} unds no vendidas por falta de stock — S/ ${fmtN(Math.round(E.stockValRecup))} recuperables
+        </div>
+        <div class="insight-desc">
+          El ${stockPct}% del potencial no realizado Particular se debe a
+          <code>sto_med ≤ 0</code> al momento de la atención. Resolver el quiebre de stock
+          es la palanca de mayor impacto sin necesidad de modificar precios ni márgenes.
+        </div>
+      </div>
+    </div>
+    <div class="insight-card ins-amber">
+      <div class="insight-icon">📊</div>
+      <div>
+        <div class="insight-title">
+          Solo ${E.nAltoMargen} productos pueden absorber descuentos — el ${badPct}% tiene margen &lt;20%
+        </div>
+        <div class="insight-desc">
+          Los descuentos son viables únicamente en los ${E.nAltoMargen} productos con margen ≥ 30%,
+          donde incluso con 20% de descuento se mantiene rentabilidad positiva.
+          Ganancia neta simulada con 15% descuento: S/ ${fmtN(Math.round(E.ganNeta15dscto))}.
+        </div>
+      </div>
+    </div>
+    <div class="insight-card ins-teal">
+      <div class="insight-icon">👩‍⚕️</div>
+      <div>
+        <div class="insight-title">
+          ${benchNom} convierte al ${benchPct}${benchEsp ? " — modelo a replicar en " + benchEsp : ""}
+        </div>
+        <div class="insight-desc">
+          ${benchNom} ${bench && bench.pct > parseFloat(avgParPct) * 1.5 ? "supera" : "lidera"} la tasa promedio Particular
+          (${avgParPct}%). Identificar y replicar sus prácticas hacia los médicos de menor conversión
+          puede tener alto impacto sin costo adicional.
+        </div>
+      </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────────────
+// TABLA CANDIDATOS A DESCUENTO — renderizado dinámico
+// ─────────────────────────────────────────────────────────
+function renderDescuentoTable(E) {
+  const tbody = document.getElementById("descuentoBody");
+  if (!tbody) return;
+  const prods = E.top4AltoMargen.length
+    ? E.prodsAltoMargenSlice || E.top4AltoMargen
+    : [];
+
+  // Usar prodsAltoMargen completo si está disponible, si no top4 del objeto estrategias
+  const list = (E.prodsAltoMargenFull || E.top4AltoMargen || []).slice(0, 10);
+
+  if (!list.length) {
+    tbody.innerHTML =
+      "<tr><td colspan='7' style='text-align:center;padding:16px;color:#9ca3af'>No hay productos con margen ≥ 30% en el período cargado</td></tr>";
+    return;
+  }
+
+  let totalUnds = 0,
+    totSin = 0,
+    tot10 = 0;
+  let rows = "";
+  list.forEach((p) => {
+    const ganSin = p.sinConv * (p.precio - p.costo);
+    const gan10 = p.sinConv * (p.precio * 0.9 - p.costo);
+    const mCls = p.margen >= 45 ? "alto" : "medio";
+    totalUnds += p.sinConv;
+    totSin += ganSin;
+    tot10 += gan10;
+    rows += `<tr>
+      <td style="font-size:.8rem">${p.producto.replace(/\bTAB\b|\bCOMP\b|\bCAP\b|\bSOL\b/gi, (m) => m.toLowerCase())}</td>
+      <td class="r">${fmtN(Math.round(p.sinConv))}</td>
+      <td class="r"><span class="margen-badge ${mCls}">${p.margen.toFixed(1)}%</span></td>
+      <td class="r">S/ ${fmt(ganSin)}</td>
+      <td class="r"><span class="desc-val">S/ ${fmt(Math.max(0, gan10))}</span></td>
+    </tr>`;
+  });
+  rows += `<tr>
+    <td><strong>TOTAL</strong></td>
+    <td class="r"><strong>${fmtN(Math.round(totalUnds))}</strong></td>
+    <td class="r">&mdash;</td>
+    <td class="r"><strong>S/ ${fmt(totSin)}</strong></td>
+    <td class="r"><strong>S/ ${fmt(Math.max(0, tot10))}</strong></td>
+
+  </tr>`;
+  tbody.innerHTML = rows;
+}
+
+// ─────────────────────────────────────────────────────────
+// TABLA MÉDICOS PRIORITARIOS — renderizado dinámico
+// ─────────────────────────────────────────────────────────
+function renderMedPrioTable(medPriData, E, K) {
+  const tbody = document.getElementById("medprioBody");
+  if (!tbody || !medPriData || !medPriData.length) return;
+
+  const mejorPct = E.mejorMedPar ? E.mejorMedPar.pct : 0;
+  let rows = "";
+  medPriData.forEach((d) => {
+    const pct = d.pct;
+    const barW = Math.min(Math.round(pct * 1.5), 120);
+    const cls = pct >= 40 ? "high" : pct >= 15 ? "mid" : "low";
+    const nombre = d.medico
+      .split(" ")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(" ");
+    const esp = d.especialidad || "—";
+    const isBench =
+      d.isBenchmark || (E.mejorMedPar && d.medico === E.mejorMedPar.medico);
+    const isMayor =
+      d.isMayorTasa || (mejorPct > 0 && pct === mejorPct && !isBench);
+    const tag = isBench
+      ? '<span class="benchmark-tag">Benchmark</span>'
+      : isMayor
+        ? '<span class="model-tag">Mayor tasa</span>'
+        : "";
+    const pot =
+      d.ganPerd >= 500
+        ? `<strong>S/ ${fmt(d.ganPerd)}</strong>`
+        : `S/ ${fmt(d.ganPerd)}`;
+    rows += `<tr>
+      <td>${nombre}${tag}</td>
+      <td>${esp}</td>
+      <td class="r">${fmtN(d.deriv)}</td>
+      <td class="r">${fmtN(d.sinConv)}</td>
+      <td class="r">
+        <div class="conv-bar-wrap" style="justify-content:flex-end">
+          <div class="conv-bar ${cls}" style="width:${barW}px"></div>
+          <span class="conv-pct ${cls}">${pct.toFixed(1)}%</span>
+        </div>
+      </td>
+      <td class="r">${pot}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = rows;
+}
+
+// ─────────────────────────────────────────────────────────
+function renderStrategias(E, K) {
+  const grid = document.getElementById("stratGrid");
+  if (!grid) return;
+
+  // Helpers
+  const badge = (cls, icon, label) =>
+    `<div class="strat-header"><span class="priority-badge ${cls}">${icon} ${label}</span></div>`;
+  const impact = (label, val) =>
+    `<div class="strat-impact"><span class="impact-label">${label}</span><span class="impact-val">${val}</span></div>`;
+  const action = (txt) =>
+    `<div class="strat-action"><strong>Acción:</strong> ${txt}</div>`;
+  const card = (prio, inner) =>
+    `<div class="strat-card ${prio}">${inner}</div>`;
+
+  // ── 1. Reposición Urgente de Stock ────────────────────────
+  const c1 = card(
+    "prio-alta",
+    `
+    ${badge("p-alta", "&#9650;", "Prioridad Alta")} <span class="strat-icon">📦</span>
+    <h4>Reposición Urgente de Stock</h4>
+    <p>${fmtN(E.stockUnds)} unidades Particulares no se convirtieron porque el producto
+    tenía <code>sto_med ≤ 0</code> al momento de la receta. Es la causa número uno
+    de no-conversión y no requiere cambios de precio ni estrategias comerciales.</p>
+    ${impact("Ventas recuperables sin descuento", "S/ " + fmt(E.stockValRecup))}
+    ${action("Auditoría semanal de stock para los top 20 medicamentos más recetados en consulta Particular. Establecer stock mínimo de seguridad por especialidad.")}`,
+  );
+
+  // ── 2. Médicos de Baja Conversión ─────────────────────────
+  const medList = E.medPar
+    .map((m) => {
+      const nom = m.medico.split(" ").slice(0, 2).join(" ");
+      return `${nom} <b>(${m.pct.toFixed(1)}%</b>, ${fmtN(m.sinConv)} unds sin convertir)`;
+    })
+    .join("; ");
+  const totalSinConvMed = E.medPar.reduce((s, m) => s + m.sinConv, 0);
+  const pctDeTotalMed =
+    K.parDeriv > 0
+      ? ((totalSinConvMed / (K.parDeriv - K.parConv)) * 100).toFixed(0)
+      : "—";
+  const potCombinado = E.medPar.reduce((s, m) => s + m.ganPerd, 0);
+  const c2 = card(
+    "prio-alta",
+    `
+    ${badge("p-alta", "&#9650;", "Prioridad Alta")} <span class="strat-icon">👨‍⚕️</span>
+    <h4>Gestión Focalizada en Médicos de Baja Conversión</h4>
+    <p>${medList} — concentran ${fmtN(totalSinConvMed)} unds no convertidas
+    (${pctDeTotalMed}% del total Particular).</p>
+    ${impact("Potencial neto combinado (" + E.medPar.length + " médicos)", "S/ " + fmtN(Math.round(potCombinado)))}
+    ${action("Coordinar con los servicios correspondientes para que farmacia comunique disponibilidad y alternativas en el momento de la atención.")}`,
+  );
+
+  // ── 3. Descuentos Selectivos Alto Margen ──────────────────
+  const topProdList = E.top4AltoMargen
+    .map((p) => `${p.producto} (${p.margen.toFixed(1)}%)`)
+    .join(", ");
+  const c3 = card(
+    "prio-media",
+    `
+    ${badge("p-media", "&#9654;", "Prioridad Media")} <span class="strat-icon">🏷️</span>
+    <h4>Descuentos Selectivos en Productos de Alto Margen</h4>
+    <p>Solo ${E.nAltoMargen} productos con margen ≥ 30% soportan descuentos sin pérdidas.
+    ${E.top4AltoMargen.length ? topProdList + " son los candidatos más seguros." : ""}</p>
+    ${impact("Ganancia neta con 15% descuento (si se convierten)", "S/ " + fmtN(Math.round(E.ganNeta15dscto)) + " netos")}
+    ${action('Crear una "tarjeta de beneficios Particular" con descuento del 10–15% exclusivamente en los productos con margen ≥ 30%. No aplicar a productos con margen < 30%.')}`,
+  );
+
+  // ── 4. Plan de Pago Diferido Alto Costo ──────────────────
+  const altoCostoDesc = E.topAltoCosto.length
+    ? E.topAltoCosto
+        .map(
+          (p) =>
+            `${p.producto} (${fmtN(p.sinConv)} unds, S/ ${fmtN(Math.round(p.totSin))} potencial)`,
+        )
+        .join(" y ")
+    : "medicamentos de alto costo";
+  const c4 = card(
+    "prio-media",
+    `
+    ${badge("p-media", "&#9654;", "Prioridad Media")} <span class="strat-icon">💳</span>
+    <h4>Plan de Pago Diferido para Medicamentos de Alto Costo</h4>
+    <p>${altoCostoDesc} tienen precio unitario elevado — no son candidatos a descuento
+    pero sí a financiamiento en cuotas.</p>
+    ${impact("Potencial combinado sin alterar precio", "S/ " + fmtN(Math.round(E.potencialAltoCosto)))}
+    ${action("Habilitar pago en 2–3 cuotas sin interés para recetas de costo total > S/ 30 en consultas Particulares.")}`,
+  );
+
+  // ── 5. Sustitución por Genéricos ─────────────────────────
+  const c5 = card(
+    "prio-media",
+    `
+    ${badge("p-media", "&#9654;", "Prioridad Media")} <span class="strat-icon">💊</span>
+    <h4>Sustitución por Alternativas Genéricas</h4>
+    <p>${E.nBajoMargen} productos no convertidos tienen margen &lt; 20%, lo que hace
+    inviable el descuento en el original. Ofrecer un equivalente genérico disponible
+    en stock puede concretar la venta manteniendo o mejorando el margen.</p>
+    ${impact("Unds no convertidas en este rango de margen", fmtN(E.undsBajoMargen) + " unds")}
+    ${action("Capacitar al personal de farmacia para ofrecer proactivamente el equivalente genérico disponible cuando el original no es adquirido por el paciente Particular.")}`,
+  );
+
+  // ── 6. Fidelización Particular ───────────────────────────
+  const mejorNom = E.mejorMedPar
+    ? E.mejorMedPar.medico.split(" ").slice(0, 2).join(" ")
+    : "—";
+  const mejorPct = E.mejorMedPar ? E.mejorMedPar.pct.toFixed(1) + "%" : "—";
+  const c6 = card(
+    "prio-baja",
+    `
+    ${badge("p-baja", "&#9670;", "Prioridad Baja")} <span class="strat-icon">🎯</span>
+    <h4>Programa de Fidelización Particular</h4>
+    <p>Se registraron ${fmtN(E.uniqAdmPar)} admisiones únicas Particulares en el período.
+    ${E.mejorMedPar ? mejorNom + " lidera con " + mejorPct + " de conversión — modelo a replicar. " : ""}
+    Crear seguimiento de conversión individual permite identificar pacientes con potencial de fidelización.</p>
+    ${impact("Impacto", "Aumento de conversión sostenida")}
+    ${action("Implementar registro simple de admisiones Particular con historial de compra por paciente, usando el campo <code>admision</code> como identificador.")}`,
+  );
+
+  grid.innerHTML = c1 + c2 + c3 + c4 + c5 + c6;
+}
+
+// ─────────────────────────────────────────────────────────
+// PARSEO DE EXCEL  (SheetJS)
+// ─────────────────────────────────────────────────────────
+function parseExcel(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      setStatus(
+        `<span class="us-spin"></span> <span class="us-info">Procesando ${file.name}…</span>`,
+      );
+      const wb = XLSX.read(e.target.result, { type: "array", cellDates: true });
+      const D = buildDataFromWorkbook(wb, file.name);
+      saveToCache(D);
+      renderDashboard(D);
+      setStatus(
+        `<span class="us-ok">✓ Cargado</span> <span class="us-date">Rango: ${D.fechaRango}</span> <span class="us-info">· ${D.archivoNom} · ${D.totalRows} registros</span>`,
+      );
+    } catch (err) {
+      setStatus(
+        `<span class="us-err">✗ Error al procesar:</span> <span class="us-info">${err.message}</span>`,
+      );
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function setStatus(html) {
+  uploadStatus.innerHTML = html;
+}
+
+// ─────────────────────────────────────────────────────────
+// CONSTRUCCIÓN DE DATOS DESDE WORKBOOK
+// Asume primera hoja con columnas:
+//   med_nomb | tipo_atencion | fec_atencion | can_derivada | can_conversion |
+//   tot_conversion | t_costo_conver | tot_sinconversion | t_costo_sin_conver |
+//   sto_med | prod_nomb | precio_venta | costo
+// (acepta variaciones en mayúsculas/minúsculas)
+// ─────────────────────────────────────────────────────────
+function buildDataFromWorkbook(wb, fileName) {
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+  if (!rows.length) throw new Error("La hoja está vacía");
+
+  // normalizar claves a minúsculas sin espacios
+  const norm = rows.map((r) => {
+    const out = {};
+    for (const k in r) {
+      out[k.toLowerCase().trim().replace(/\s+/g, "_")] = r[k];
+    }
+    return out;
+  });
+
+  // ── detectar rango de fechas ──────────────────────────
+  const COL_FECHA = [
+    "fecha",
+    "fec_atencion",
+    "fecha_atencion",
+    "date",
+    "fec_ate",
+  ];
+  let fechaCol = COL_FECHA.find((c) => norm[0][c] !== undefined);
+  let minDate = null,
+    maxDate = null;
+  if (fechaCol) {
+    norm.forEach((r) => {
+      const d = excelDateToJS(r[fechaCol]);
+      if (d && !isNaN(d)) {
+        if (!minDate || d < minDate) minDate = d;
+        if (!maxDate || d > maxDate) maxDate = d;
       }
+    });
+  }
+  let fechaRango = "Período cargado";
+  if (minDate && maxDate) {
+    if (
+      minDate.getMonth() === maxDate.getMonth() &&
+      minDate.getFullYear() === maxDate.getFullYear()
+    ) {
+      fechaRango = mesAnio(minDate);
+    } else {
+      fechaRango = mesAnio(minDate) + " / " + mesAnio(maxDate);
+    }
+    // Capitalizar
+    fechaRango = fechaRango.replace(/^\w|\s\w/g, (m) => m.toUpperCase());
+  }
+
+  // ── helpers de columna ────────────────────────────────
+  const get = (row, ...cols) => {
+    for (const c of cols) {
+      if (row[c] !== undefined && row[c] !== "") return row[c];
+    }
+    return 0;
+  };
+  const num = (v) => parseFloat(v) || 0;
+
+  // helpers de médico y tipo (prioriza nombres reales del Excel)
+  const getMed = (r) =>
+    String(
+      get(r, "medico", "med_nomb", "med_nombre", "doctor") || "DESCONOCIDO",
+    )
+      .toUpperCase()
+      .trim();
+  const getTipo = (r) =>
+    String(get(r, "tipo", "tipo_atencion", "tipo_ate") || "").toUpperCase();
+
+  // ── ATENCIONES POR MÉDICO ─────────────────────────────
+  const atenMap = {};
+  norm.forEach((r) => {
+    const med = getMed(r);
+    const tipo = getTipo(r);
+    if (!atenMap[med]) atenMap[med] = { medico: med, seguro: 0, particular: 0 };
+    if (tipo.includes("SEG")) atenMap[med].seguro++;
+    else if (tipo.includes("PAR")) atenMap[med].particular++;
+    else atenMap[med].particular++;
+  });
+  // Deduplicar por admision si existe columna admision
+  const COL_ADM = ["admision", "adm", "admisión"];
+  const admCol = COL_ADM.find((c) => norm[0][c] !== undefined);
+  let atenciones;
+  if (admCol) {
+    // contar admisiones únicas por médico/tipo
+    const admByMed = {};
+    norm.forEach((r) => {
+      const med = getMed(r);
+      const tipo = getTipo(r);
+      const adm = String(r[admCol] || "").trim();
+      const key = med + "|" + adm;
+      if (!admByMed[key]) admByMed[key] = { med, tipo };
+    });
+    const atenMap2 = {};
+    Object.values(admByMed).forEach(({ med, tipo }) => {
+      if (!atenMap2[med])
+        atenMap2[med] = { medico: med, seguro: 0, particular: 0 };
+      if (tipo.includes("SEG")) atenMap2[med].seguro++;
+      else atenMap2[med].particular++;
+    });
+    atenciones = Object.values(atenMap2).sort(
+      (a, b) => b.seguro + b.particular - (a.seguro + a.particular),
+    );
+  } else {
+    atenciones = Object.values(atenMap).sort(
+      (a, b) => b.seguro + b.particular - (a.seguro + a.particular),
+    );
+  }
+
+  // ── CONVERSIÓN POR MÉDICO (con especialidad) ──────────────
+  const convMap = {};
+  norm.forEach((r) => {
+    const med = getMed(r);
+    const abr = med.split(" ")[0];
+    const esp = String(
+      get(r, "especialidad", "espec", "esp", "esp_nomb", "servicio") || "",
+    ).trim();
+    if (!convMap[med])
+      convMap[med] = {
+        medico: med,
+        abr,
+        especialidad: esp,
+        deriv: 0,
+        conv: 0,
+        sinConv: 0,
+        ganReal: 0,
+        ganPerd: 0,
+      };
+    // actualiza especialidad si la encontramos ahora
+    if (!convMap[med].especialidad && esp) convMap[med].especialidad = esp;
+    convMap[med].deriv += num(get(r, "can_derivada"));
+    convMap[med].conv += num(get(r, "can_conversion"));
+    convMap[med].sinConv += num(get(r, "can_sinconvert"));
+    convMap[med].ganReal +=
+      num(get(r, "tot_conversion")) - num(get(r, "t_costo_conver"));
+    convMap[med].ganPerd +=
+      num(get(r, "tot_sinconversion")) - num(get(r, "t_costo_sin_conver"));
+  });
+  const convData = Object.values(convMap)
+    .map((d) => {
+      d.pct =
+        d.deriv > 0 ? parseFloat(((d.conv / d.deriv) * 100).toFixed(1)) : 0;
+      return d;
+    })
+    .sort((a, b) => b.deriv - a.deriv);
+
+  // ── CONVERSIÓN SOLO PARTICULAR POR MÉDICO ─────────────────────
+  // convData incluye SEGURO + PARTICULAR; convDataPar es solo PAR
+  const convMapPar = {};
+  norm.forEach((r) => {
+    const tipo = getTipo(r);
+    if (!tipo.includes("PAR")) return;
+    const med = getMed(r);
+    const abr = med.split(" ")[0];
+    const esp = String(
+      get(r, "especialidad", "espec", "esp", "esp_nomb", "servicio") || "",
+    ).trim();
+    if (!convMapPar[med])
+      convMapPar[med] = {
+        medico: med,
+        abr,
+        especialidad: esp,
+        deriv: 0,
+        conv: 0,
+        sinConv: 0,
+        ganReal: 0,
+        ganPerd: 0,
+      };
+    if (!convMapPar[med].especialidad && esp)
+      convMapPar[med].especialidad = esp;
+    convMapPar[med].deriv += num(get(r, "can_derivada"));
+    convMapPar[med].conv += num(get(r, "can_conversion"));
+    convMapPar[med].sinConv += num(get(r, "can_sinconvert"));
+    convMapPar[med].ganReal +=
+      num(get(r, "tot_conversion")) - num(get(r, "t_costo_conver"));
+    convMapPar[med].ganPerd +=
+      num(get(r, "tot_sinconversion")) - num(get(r, "t_costo_sin_conver"));
+  });
+  const convDataPar = Object.values(convMapPar)
+    .map((d) => {
+      d.pct =
+        d.deriv > 0 ? parseFloat(((d.conv / d.deriv) * 100).toFixed(1)) : 0;
+      return d;
+    })
+    .sort((a, b) => b.ganPerd - a.ganPerd);
+
+  // médicos Particular ordenados por potencial no realizado (para tabla médicos prioritarios)
+  const medPriData = convDataPar.slice(0, 10);
+
+  // ── TOP VENTAS POR MÉDICO ─────────────────────────────
+  const ventMap = {};
+  norm.forEach((r) => {
+    const med = getMed(r);
+    const v = num(get(r, "tot_conversion"));
+    if (v <= 0) return;
+    if (!ventMap[med])
+      ventMap[med] = {
+        medico: med,
+        abr: med.split(" ")[0],
+        ventas: 0,
+        unidades: 0,
+        atenciones: 0,
+      };
+    ventMap[med].ventas += v;
+    ventMap[med].unidades += num(get(r, "can_conversion"));
+  });
+  // atenciones de venta
+  atenciones.forEach((a) => {
+    const k = a.medico;
+    if (ventMap[k]) ventMap[k].atenciones = a.seguro + a.particular;
+  });
+  const topMedVentas = Object.values(ventMap)
+    .map((d) => ({
+      ...d,
+      ticket: d.atenciones > 0 ? d.ventas / d.atenciones : 0,
+    }))
+    .filter((d) => d.ventas > 0)
+    .sort((a, b) => b.ventas - a.ventas)
+    .slice(0, 10);
+
+  // ── TOP MEDICAMENTOS ──────────────────────────────────
+  const prodMap = {};
+  norm.forEach((r) => {
+    const prod = String(
+      get(r, "prod_nomb", "producto", "descripcion", "prod_desc") || "",
+    )
+      .toUpperCase()
+      .trim();
+    if (!prod) return;
+    if (!prodMap[prod])
+      prodMap[prod] = { producto: prod, ingreso: 0, unidades: 0 };
+    prodMap[prod].ingreso += num(get(r, "tot_conversion", "tot_conv"));
+    prodMap[prod].unidades += num(get(r, "can_conversion", "can_conv"));
+  });
+  const topAllProds = Object.values(prodMap).filter((p) => p.ingreso > 0);
+  const topMedIngreso = [...topAllProds]
+    .sort((a, b) => b.ingreso - a.ingreso)
+    .slice(0, 10);
+  const topMedUnidades = [...topAllProds]
+    .sort((a, b) => b.unidades - a.unidades)
+    .slice(0, 10);
+
+  // ── TOP PRODUCTOS SIN CONVERSIÓN ──────────────────────
+  const prodSinMap = {};
+  norm.forEach((r) => {
+    const prod = String(
+      get(r, "prod_nomb", "producto", "descripcion", "prod_desc") || "",
+    )
+      .toUpperCase()
+      .trim();
+    if (!prod) return;
+    if (!prodSinMap[prod])
+      prodSinMap[prod] = { producto: prod, sinConv: 0, totSin: 0, ganPerd: 0 };
+    prodSinMap[prod].sinConv += num(get(r, "can_sinconvert", "can_sin_conv"));
+    prodSinMap[prod].totSin += num(get(r, "tot_sinconversion", "tot_sin"));
+    prodSinMap[prod].ganPerd +=
+      num(get(r, "tot_sinconversion", "tot_sin")) -
+      num(get(r, "t_costo_sin_conver", "costo_sin"));
+  });
+  const topProductos = Object.values(prodSinMap)
+    .filter((p) => p.ganPerd > 0)
+    .sort((a, b) => b.ganPerd - a.ganPerd)
+    .slice(0, 10);
+
+  // ── SIN STOCK (sto_med <= 0 incluye negativos) ────────
+  const stockMap = {};
+  norm.forEach((r) => {
+    const sto = num(get(r, "sto_med", "stock", "existencia"));
+    if (sto > 0) return; // >0 = hay stock; 0 y negativos = sin stock
+    const prod = String(get(r, "producto", "prod_nomb", "descripcion") || "")
+      .toUpperCase()
+      .trim();
+    if (!prod) return;
+    if (!stockMap[prod])
+      stockMap[prod] = { producto: prod, veces: 0, deriv: 0, conv: 0 };
+    stockMap[prod].veces++;
+    stockMap[prod].deriv += num(get(r, "can_derivada"));
+    stockMap[prod].conv += num(get(r, "can_conversion"));
+  });
+  const sinStockData = Object.values(stockMap)
+    .sort((a, b) => b.veces - a.veces)
+    .slice(0, 20);
+
+  // ── KPIs GLOBALES ─────────────────────────────────────
+  let totalDeriv = 0,
+    totalConv = 0,
+    ganReal = 0,
+    ganPerd = 0;
+  let segDeriv = 0,
+    segConv = 0,
+    parDeriv = 0,
+    parConv = 0;
+  let parVentaNR = 0,
+    parStockFail = 0,
+    segVentaNR = 0;
+  let sumPrecio = 0,
+    sumCosto = 0,
+    nProd = 0;
+
+  norm.forEach((r) => {
+    const tipo = getTipo(r);
+    const der = num(get(r, "can_derivada"));
+    const conv = num(get(r, "can_conversion"));
+    const totC = num(get(r, "tot_conversion"));
+    const coC = num(get(r, "t_costo_conver"));
+    const totS = num(get(r, "tot_sinconversion"));
+    const coS = num(get(r, "t_costo_sin_conver"));
+    const sto = num(get(r, "sto_med", "stock", "existencia"));
+    totalDeriv += der;
+    totalConv += conv;
+    ganReal += totC - coC;
+    ganPerd += totS - coS;
+    if (tipo.includes("SEG")) {
+      segDeriv += der;
+      segConv += conv;
+      segVentaNR += totS - coS;
+    } else {
+      parDeriv += der;
+      parConv += conv;
+      parVentaNR += totS - coS;
+      if (sto <= 0) {
+        // 0 y negativos = sin stock
+        parStockFail += Math.max(0, der - conv);
+      }
+    }
+    if (conv > 0 && der > 0) {
+      sumPrecio += totC / conv;
+      sumCosto += coC / conv;
+      nProd++;
+    }
+  });
+  const avgPrecioUnd = nProd > 0 ? sumPrecio / nProd : 21.12;
+  const avgCostoUnd = nProd > 0 ? sumCosto / nProd : 16.68;
+
+  const kpi = {
+    tasaGlobal:
+      totalDeriv > 0
+        ? parseFloat(((totalConv / totalDeriv) * 100).toFixed(1))
+        : 0,
+    totalDeriv,
+    totalConv,
+    ganReal,
+    ganPerd,
+    segDeriv,
+    segConv,
+    segVentaNR,
+    parDeriv,
+    parConv,
+    parSinConv: parDeriv - parConv,
+    parStockFail,
+    parVentaNR,
+    avgPrecioUnd,
+    avgCostoUnd,
+  };
+
+  // ── ESTRATEGIAS: calcular datos clave ────────────────────
+  // 1. Stock: unidades sin convertir por falta de stock + valor recuperable
+  let stockUnds = 0,
+    stockValRecup = 0;
+  norm.forEach((r) => {
+    const sto = num(get(r, "sto_med", "stock", "existencia"));
+    const tipo = getTipo(r);
+    if (sto <= 0 && tipo.includes("PAR")) {
+      const sinC = num(get(r, "can_sinconvert"));
+      const precio = num(get(r, "precio_venta"));
+      stockUnds += sinC;
+      stockValRecup += sinC * precio;
     }
   });
 
-  // ── TABLA: TOP PRODUCTOS DETALLE ──────────────────────────────────────────
-  const prodBody = document.getElementById('prodBody');
-  topProductos.forEach(p => {
-    const margen = ((p.ganPerd / p.totSin) * 100).toFixed(0);
-    prodBody.innerHTML += `
-      <tr>
-        <td style="font-size:.75rem;font-weight:600;max-width:140px;">${p.producto}</td>
-        <td class="r" style="font-size:.78rem;">${p.sinConv}</td>
-        <td class="r" style="font-size:.78rem;">S/ ${p.totSin.toFixed(2)}</td>
-        <td class="r"><span class="loss-amount" style="font-size:.82rem;">S/ ${p.ganPerd.toFixed(2)}</span></td>
-      </tr>`;
+  // 2. Médicos Particular de baja conversión (min 50 unds derivadas Particular)
+  const medPar = convDataPar
+    .filter((d) => d.deriv >= 50)
+    .sort((a, b) => a.pct - b.pct)
+    .slice(0, 3);
+
+  // 3. Productos con margen por rango: alto (≥30%), bajo (<20%)
+  // Precio y costo se derivan como promedios ponderados:
+  //   precio_unit = tot_sinconversion / can_sinconvert
+  //   costo_unit  = t_costo_sin_conver / can_sinconvert
+  // Esto evita depender de la primera fila y garantiza consistencia
+  // matemática entre margen y los cálculos de descuento.
+  const prodConMargenAcc = {};
+  norm.forEach((r) => {
+    const tipo = getTipo(r);
+    if (!tipo.includes("PAR")) return;
+    const prod = String(get(r, "producto", "prod_nomb", "descripcion") || "")
+      .toUpperCase()
+      .trim();
+    const sinC = num(get(r, "can_sinconvert"));
+    if (!prod || sinC <= 0) return;
+    if (!prodConMargenAcc[prod])
+      prodConMargenAcc[prod] = {
+        producto: prod,
+        sinConv: 0,
+        totVenta: 0,
+        totCosto: 0,
+      };
+    prodConMargenAcc[prod].sinConv += sinC;
+    prodConMargenAcc[prod].totVenta += num(get(r, "tot_sinconversion"));
+    prodConMargenAcc[prod].totCosto += num(get(r, "t_costo_sin_conver"));
+  });
+  const todosProdsMargen = Object.values(prodConMargenAcc).map((p) => {
+    const precio = p.sinConv > 0 ? p.totVenta / p.sinConv : 0;
+    const costo = p.sinConv > 0 ? p.totCosto / p.sinConv : 0;
+    const margen = precio > 0 ? ((precio - costo) / precio) * 100 : 0;
+    return {
+      producto: p.producto,
+      sinConv: p.sinConv,
+      precio,
+      costo,
+      margen,
+      totSin: p.totVenta,
+    };
+  });
+  // alto margen ≥30%
+  const prodsAltoMargen = todosProdsMargen
+    .filter((p) => p.margen >= 30)
+    .sort((a, b) => b.margen - a.margen);
+  const nAltoMargen = prodsAltoMargen.length;
+  const top4AltoMargen = prodsAltoMargen.slice(0, 4);
+  // ganancia neta con 15% dscto: sinConv * ( precio*0.85 - costo )
+  const ganNeta15dscto = prodsAltoMargen.reduce(
+    (s, p) => s + p.sinConv * (p.precio * 0.85 - p.costo),
+    0,
+  );
+  // bajo margen <20%
+  const prodsBajoMargen = todosProdsMargen.filter(
+    (p) => p.margen < 20 && p.margen >= 0,
+  );
+  const nBajoMargen = prodsBajoMargen.length;
+  const undsBajoMargen = prodsBajoMargen.reduce((s, p) => s + p.sinConv, 0);
+
+  // 4. Productos de alto costo sin convertir (precio unitario más alto, margen <30%)
+  const topAltoCosto = todosProdsMargen
+    .filter((p) => p.precio > 10 && p.margen < 30 && p.sinConv > 0)
+    .sort((a, b) => b.totSin - a.totSin)
+    .slice(0, 2);
+  const potencialAltoCosto = topAltoCosto.reduce((s, p) => s + p.totSin, 0);
+
+  // 5. Admisiones únicas Particular (para tarjeta fidelización)
+  const uniqAdmPar = new Set();
+  norm.forEach((r) => {
+    const tipo = getTipo(r);
+    if (!tipo.includes("PAR")) return;
+    const adm = String(r["admision"] || r["adm"] || "").trim();
+    if (adm) uniqAdmPar.add(adm);
   });
 
-  // ── RANKING TABLE ─────────────────────────────────────────────────────────
-  const tbody = document.getElementById('rankingBody');
-  const maxTotal = Math.max(...totales);
+  // 6. Médico con mayor conversión Particular (modelo a replicar)
+  const mejorMedPar = convDataPar
+    .filter((d) => d.deriv >= 5 && d.pct > 0)
+    .sort((a, b) => b.pct - a.pct)[0];
 
-  data.slice(0, 10).forEach((d, i) => {
-    const total = d.seguro + d.particular;
-    const pctSeg = total ? (d.seguro / total * 100).toFixed(0) : 0;
-    const pctPar = total ? (d.particular / total * 100).toFixed(0) : 0;
-    const segW   = (d.seguro / maxTotal * 60).toFixed(1);
-    const parW   = (d.particular / maxTotal * 60).toFixed(1);
-    const isTop  = i < 3;
+  const estrategias = {
+    stockUnds: Math.round(stockUnds),
+    stockValRecup,
+    medPar,
+    nAltoMargen,
+    top4AltoMargen,
+    prodsAltoMargenFull: prodsAltoMargen.slice(0, 10), // lista completa para la tabla de descuentos
+    ganNeta15dscto,
+    nBajoMargen,
+    undsBajoMargen: Math.round(undsBajoMargen),
+    topAltoCosto,
+    potencialAltoCosto,
+    uniqAdmPar: uniqAdmPar.size,
+    mejorMedPar,
+  };
 
-    tbody.innerHTML += `
-      <tr>
-        <td><span class="rank-num ${isTop ? 'top' : ''}">${i + 1}</span></td>
-        <td>
-          <div class="medico-name">${d.medico.split(' ').slice(0,2).join(' ')}</div>
-          <div class="mini-bar-wrap">
-            <div class="mini-bar seg" style="width:${segW}px"></div>
-            <div class="mini-bar par" style="width:${parW}px"></div>
-          </div>
-        </td>
-        <td class="num"><span class="pill seg">${d.seguro}</span></td>
-        <td class="num"><span class="pill par">${d.particular}</span></td>
-        <td class="num" style="color:#1a2035;font-size:.88rem">${total}</td>
-      </tr>`;
+  return {
+    fechaRango,
+    archivoNom: fileName,
+    totalRows: rows.length,
+    atenciones,
+    topMedVentas,
+    topMedIngreso,
+    topMedUnidades,
+    sinStockData,
+    convData,
+    medPriData,
+    topProductos,
+    kpi,
+    estrategias,
+  };
+}
+
+// ─────────────────────────────────────────────────────────
+// EVENTOS DE CARGA
+// ─────────────────────────────────────────────────────────
+excelInput.addEventListener("change", (e) => {
+  if (e.target.files[0]) parseExcel(e.target.files[0]);
+});
+
+uploadPanel.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  uploadPanel.classList.add("drag-over");
+});
+uploadPanel.addEventListener("dragleave", () =>
+  uploadPanel.classList.remove("drag-over"),
+);
+uploadPanel.addEventListener("drop", (e) => {
+  e.preventDefault();
+  uploadPanel.classList.remove("drag-over");
+  const f = e.dataTransfer.files[0];
+  if (f && /\.(xls|xlsx|xlsm)$/i.test(f.name)) parseExcel(f);
+  else
+    setStatus(
+      '<span class="us-err">✗ Solo se aceptan archivos .xls / .xlsx</span>',
+    );
+});
+
+// ─────────────────────────────────────────────────────────
+// INICIALIZACIÓN — caché o estado vacío
+// ─────────────────────────────────────────────────────────
+const clearCacheBtn = document.getElementById("clearCacheBtn");
+if (clearCacheBtn) {
+  clearCacheBtn.addEventListener("click", () => {
+    clearCache();
+    showEmptyState();
+    // Reset input para permitir recargar el mismo archivo
+    if (excelInput) excelInput.value = "";
   });
+}
+
+const _cached = loadFromCache();
+if (_cached) {
+  renderDashboard(_cached);
+  setStatus(
+    `<span class="us-ok">✓ Datos restaurados</span> <span class="us-date">Rango: ${_cached.fechaRango}</span>` +
+      ` <span class="us-info">· ${_cached.archivoNom} · ${_cached.totalRows} registros</span>`,
+  );
+} else {
+  showEmptyState();
+}
