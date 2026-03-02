@@ -82,12 +82,26 @@
           <div class="card-header">
             <div>
               <h2>Atenciones por Médico</h2>
-              <div class="subtitle" id="barSubtitle">Agrupado por tipo de atención</div>
+              <div class="subtitle" id="barSubtitle">
+                Agrupado por tipo de atención
+              </div>
             </div>
-            <div style="display:flex;align-items:center;gap:12px">
+            <div style="display: flex; align-items: center; gap: 12px">
               <div class="bar-toggle">
-                <button class="bt-btn active" data-mode="sep" onclick="setBarMode('sep')">Separado</button>
-                <button class="bt-btn" data-mode="uni" onclick="setBarMode('uni')">Unificado</button>
+                <button
+                  class="bt-btn active"
+                  data-mode="sep"
+                  onclick="setBarMode('sep')"
+                >
+                  Separado
+                </button>
+                <button
+                  class="bt-btn"
+                  data-mode="uni"
+                  onclick="setBarMode('uni')"
+                >
+                  Unificado
+                </button>
               </div>
               <div class="legend" id="barLegend">
                 <div class="legend-item">
@@ -455,10 +469,22 @@
                 Unidades recetadas (derivadas) y vendidas (convertidas)
               </div>
             </div>
-            <div style="display:flex;align-items:center;gap:12px">
+            <div style="display: flex; align-items: center; gap: 12px">
               <div class="bar-toggle">
-                <button class="bt-btn active" data-conv-mode="uni" onclick="setConvMode('uni')">Unidades</button>
-                <button class="bt-btn" data-conv-mode="aten" onclick="setConvMode('aten')">Atenciones</button>
+                <button
+                  class="bt-btn active"
+                  data-conv-mode="uni"
+                  onclick="setConvMode('uni')"
+                >
+                  Unidades
+                </button>
+                <button
+                  class="bt-btn"
+                  data-conv-mode="aten"
+                  onclick="setConvMode('aten')"
+                >
+                  Atenciones
+                </button>
               </div>
               <div class="legend" id="convLegend">
                 <div class="legend-item">
@@ -581,7 +607,7 @@
                     >
                   </th>
                   <th class="r">
-                    Pot. no realiz.
+                    Ganan. Neta no realiz.
                     <i
                       class="fi tip-down tip-r"
                       data-f="Fórmula: tot_sinconversion − t_costo_sin_conver&#10;Precio no facturado − Costo del inventario"
@@ -818,7 +844,6 @@
           </div>
         </div>
       </div>
-
 
       <!-- Tabla: candidatos a descuento -->
       <div class="card" style="margin-bottom: var(--gap-lg)">

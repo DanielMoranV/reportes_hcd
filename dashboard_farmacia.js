@@ -879,8 +879,7 @@ function renderConvChart(data) {
     ? (items) => {
         const d = data[items[0].dataIndex];
         const total = d.atenConv + d.atenSinConv;
-        const pct =
-          total > 0 ? ((d.atenConv / total) * 100).toFixed(1) : "0.0";
+        const pct = total > 0 ? ((d.atenConv / total) * 100).toFixed(1) : "0.0";
         return [`Total atenciones: ${total}`, `Tasa conv.: ${pct}%`];
       }
     : (items) => {
@@ -888,7 +887,7 @@ function renderConvChart(data) {
         return [
           `Total deriv.: ${d.deriv}`,
           `Tasa conv.: ${d.pct}%`,
-          `Pot. no realiz.: S/ ${d.ganPerd.toFixed(2)}`,
+          `Ganan. Neta no realiz.: S/ ${d.ganPerd.toFixed(2)}`,
         ];
       };
 
@@ -1185,7 +1184,6 @@ function renderMedPrioTable(medPriData, E, K) {
   });
   tbody.innerHTML = rows;
 }
-
 
 // ─────────────────────────────────────────────────────────
 // PARSEO DE EXCEL  (SheetJS)
@@ -1530,8 +1528,9 @@ function buildDataFromWorkbook(wb, fileName) {
     stockMap[prod].deriv += num(get(r, "can_derivada"));
     stockMap[prod].conv += num(get(r, "can_conversion"));
   });
-  const sinStockData = Object.values(stockMap)
-    .sort((a, b) => b.veces - a.veces);
+  const sinStockData = Object.values(stockMap).sort(
+    (a, b) => b.veces - a.veces,
+  );
 
   // ── KPIs GLOBALES ─────────────────────────────────────
   let totalDeriv = 0,
