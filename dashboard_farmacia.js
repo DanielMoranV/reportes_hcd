@@ -288,9 +288,8 @@ function renderDashboard(D) {
     "S/ " + fmtN(Math.round(K.ganPerd));
 
   // ── KPIs sin stock ──────────────────────────────────────
-  // (sin stock: calculado desde sinStockData)
-  const ssProds = D.sinStockData.length;
-  const ssAfect = [...new Set(D.sinStockData.map((x) => x.producto))].length;
+  const ssProds  = D.sinStockData.length;
+  const ssAfect  = D.admisionesSinStock; // admisiones únicas con ≥1 producto sin stock
   const ssLineas = D.sinStockData.reduce((s, x) => s + x.deriv, 0);
   document.querySelector(".kpi-card.stk-prod .value").textContent =
     fmtN(ssProds);
@@ -1515,6 +1514,7 @@ function buildDataFromWorkbook(wb, fileName) {
 
   // ── SIN STOCK (sto_med <= 0 incluye negativos) ────────
   const stockMap = {};
+  const _admSinStock = new Set(); // admisiones únicas afectadas por sin-stock
   norm.forEach((r) => {
     const sto = num(get(r, "sto_med", "stock", "existencia"));
     if (sto > 0) return; // >0 = hay stock; 0 y negativos = sin stock
@@ -1527,10 +1527,16 @@ function buildDataFromWorkbook(wb, fileName) {
     stockMap[prod].veces++;
     stockMap[prod].deriv += num(get(r, "can_derivada"));
     stockMap[prod].conv += num(get(r, "can_conversion"));
+    // Contabilizar admisión única afectada
+    if (admCol) {
+      const adm = String(r[admCol] || "").trim();
+      if (adm) _admSinStock.add(adm);
+    }
   });
   const sinStockData = Object.values(stockMap).sort(
     (a, b) => b.veces - a.veces,
   );
+  const admisionesSinStock = _admSinStock.size;
 
   // ── KPIs GLOBALES ─────────────────────────────────────
   let totalDeriv = 0,
@@ -1728,6 +1734,7 @@ function buildDataFromWorkbook(wb, fileName) {
     topMedIngreso,
     topMedUnidades,
     sinStockData,
+    admisionesSinStock,
     convData,
     medPriData,
     topProductos,
