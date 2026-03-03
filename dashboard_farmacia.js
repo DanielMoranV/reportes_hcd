@@ -19,7 +19,7 @@ let charts = {};
 
 // ── Estado toggle bar chart ────────────────────────────────
 let barChartMode = "sep"; // "sep" | "uni"
-let _atencionesData = null;
+let _recetasData = null;
 
 // ── Estado toggle conv chart ───────────────────────────────
 let convChartMode = "uni"; // "uni" | "aten"
@@ -69,7 +69,7 @@ function showEmptyState() {
     if (el) el.textContent = "—";
   };
 
-  // —— KPIs superiores (atenciones)
+  // —— KPIs superiores (recetas)
   qset(".kpi-card.total .value");
   qset(".kpi-card.seguro .value");
   qset(".kpi-card.part .value");
@@ -177,7 +177,7 @@ function showEmptyState() {
 
   // —— Reset toggle bar chart
   barChartMode = "sep";
-  _atencionesData = null;
+  _recetasData = null;
   document.querySelectorAll("[data-mode]").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.mode === "sep");
   });
@@ -263,8 +263,8 @@ function renderDashboard(D) {
   footer.innerHTML = `Datos al ${hoy} &nbsp;|&nbsp; Fuente: ${D.archivoNom} &nbsp;|&nbsp; HCD`;
 
   // ── KPIs principales totales ────────────────────────────
-  const totalSeg = D.atenciones.reduce((s, d) => s + d.seguro, 0);
-  const totalPar = D.atenciones.reduce((s, d) => s + d.particular, 0);
+  const totalSeg = D.recetas.reduce((s, d) => s + d.seguro, 0);
+  const totalPar = D.recetas.reduce((s, d) => s + d.particular, 0);
   const total = totalSeg + totalPar;
   document.querySelector(".kpi-card.total .value").textContent = fmtN(total);
   document.querySelector(".kpi-card.seguro .value").textContent =
@@ -288,8 +288,8 @@ function renderDashboard(D) {
     "S/ " + fmtN(Math.round(K.ganPerd));
 
   // ── KPIs sin stock ──────────────────────────────────────
-  const ssProds  = D.sinStockData.length;
-  const ssAfect  = D.admisionesSinStock; // admisiones únicas con ≥1 producto sin stock
+  const ssProds = D.sinStockData.length;
+  const ssAfect = D.admisionesSinStock; // admisiones únicas con ≥1 producto sin stock
   const ssLineas = D.sinStockData.reduce((s, x) => s + x.deriv, 0);
   document.querySelector(".kpi-card.stk-prod .value").textContent =
     fmtN(ssProds);
@@ -347,8 +347,8 @@ function renderDashboard(D) {
   renderProyecciones(K);
 
   // ─── GRÁFICOS ──────────────────────────────────────────
-  renderBarChart(D.atenciones);
-  renderRankingTable(D.atenciones);
+  renderBarChart(D.recetas);
+  renderRankingTable(D.recetas);
   renderVentasMedChart(D.topMedVentas);
   renderVentasBody(D.topMedVentas);
   renderMedsIngresoChart(D.topMedIngreso);
@@ -376,8 +376,7 @@ function renderProyecciones(K) {
 
   // Precio por unidad = parRevNR ÷ sinConv (precio real de las PAR sin vender)
   // Margen por unidad = parVentaNR ÷ sinConv (margen de esas mismas unidades)
-  const precioPorUnd =
-    sinConv > 0 ? K.parRevNR / sinConv : K.avgPrecioUnd;
+  const precioPorUnd = sinConv > 0 ? K.parRevNR / sinConv : K.avgPrecioUnd;
   const margenNetoPorUnd =
     sinConv > 0 ? K.parVentaNR / sinConv : K.avgPrecioUnd - K.avgCostoUnd;
 
@@ -403,8 +402,10 @@ function renderProyecciones(K) {
   // ── Tarjeta Actual ──
   set("scActualPct", parPct.toFixed(1) + "%");
   set("scActualUnds", `${fmtN(K.parConv)} / ${fmtN(K.parDeriv)} unds`);
-  set("scActualRev",
-    `Ingreso potencial: S/ ${fmt(K.parRevNR)} · Ganancia: S/ ${fmt(K.parVentaNR)}`);
+  set(
+    "scActualRev",
+    `Ingreso potencial: S/ ${fmt(K.parRevNR)} · Ganancia: S/ ${fmt(K.parVentaNR)}`,
+  );
 
   // ── Escenarios ──
   const escenarios = [
@@ -455,7 +456,7 @@ function set(id, txt) {
 // GRÁFICO: BAR CHART ATENCIONES POR MÉDICO
 // ─────────────────────────────────────────────────────────
 function renderBarChart(data) {
-  _atencionesData = data;
+  _recetasData = data;
   destroyChart("barChart");
   const labels = data.map((d) => abreviar(d.medico));
   const totales = data.map((d) => d.seguro + d.particular);
@@ -543,8 +544,8 @@ function setBarMode(mode) {
     sub.textContent =
       mode === "sep"
         ? "Agrupado por tipo de atención"
-        : "Total de atenciones (Seguro + Particular)";
-  if (_atencionesData) renderBarChart(_atencionesData);
+        : "Total de recetas (Seguro + Particular)";
+  if (_recetasData) renderBarChart(_recetasData);
 }
 
 // RANKING TABLE
@@ -611,7 +612,7 @@ function renderVentasMedChart(data) {
               const idx = data.length - 1 - items[0].dataIndex;
               const d = data[idx];
               return [
-                `Atenciones: ${d.atenciones}`,
+                `Recetas: ${d.recetas}`,
                 `Unds.: ${d.unidades}`,
                 `Ticket prom.: S/ ${d.ticket.toFixed(2)}`,
               ];
@@ -649,7 +650,7 @@ function renderVentasBody(data) {
     tbody.innerHTML += `<tr>
       <td><span class="rank-num ${isTop ? "top" : ""}">${i + 1}</span>
           <span style="font-size:.78rem;font-weight:600;">${d.medico.split(" ").slice(0, 2).join(" ")}</span></td>
-      <td class="r" style="font-size:.78rem;">${d.atenciones}</td>
+      <td class="r" style="font-size:.78rem;">${d.recetas}</td>
       <td class="r" style="font-size:.78rem;">${d.unidades}</td>
       <td class="r"><span class="ticket-val">S/ ${d.ticket.toFixed(2)}</span></td>
       <td class="r" style="font-weight:700;color:#1a2035;">S/ ${d.ventas.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</td>
@@ -826,7 +827,7 @@ function renderPieChart(seg, par) {
             label: (item) => {
               const val = item.raw;
               const pct = ((val / (seg + par)) * 100).toFixed(1);
-              return ` ${val} atenciones (${pct}%)`;
+              return ` ${val} recetas (${pct}%)`;
             },
           },
         },
@@ -881,7 +882,7 @@ function renderConvChart(data) {
         const d = data[items[0].dataIndex];
         const total = d.atenConv + d.atenSinConv;
         const pct = total > 0 ? ((d.atenConv / total) * 100).toFixed(1) : "0.0";
-        return [`Total atenciones: ${total}`, `Tasa conv.: ${pct}%`];
+        return [`Total recetas: ${total}`, `Tasa conv.: ${pct}%`];
       }
     : (items) => {
         const d = data[items[0].dataIndex];
@@ -939,7 +940,7 @@ function setConvMode(mode) {
     sub.textContent =
       mode === "uni"
         ? "Unidades recetadas (derivadas) y vendidas (convertidas)"
-        : "Atenciones con y sin conversión por médico (campo admision)";
+        : "Recetas con y sin conversión por médico (campo admision)";
   if (_convData) renderConvChart(_convData);
 }
 
@@ -1306,7 +1307,7 @@ function buildDataFromWorkbook(wb, fileName) {
   // Deduplicar por admision si existe columna admision
   const COL_ADM = ["admision", "adm", "admisión"];
   const admCol = COL_ADM.find((c) => norm[0][c] !== undefined);
-  let atenciones;
+  let recetas;
   if (admCol) {
     // contar admisiones únicas por médico/tipo
     const admByMed = {};
@@ -1324,11 +1325,11 @@ function buildDataFromWorkbook(wb, fileName) {
       if (tipo.includes("SEG")) atenMap2[med].seguro++;
       else atenMap2[med].particular++;
     });
-    atenciones = Object.values(atenMap2).sort(
+    recetas = Object.values(atenMap2).sort(
       (a, b) => b.seguro + b.particular - (a.seguro + a.particular),
     );
   } else {
-    atenciones = Object.values(atenMap).sort(
+    recetas = Object.values(atenMap).sort(
       (a, b) => b.seguro + b.particular - (a.seguro + a.particular),
     );
   }
@@ -1372,7 +1373,7 @@ function buildDataFromWorkbook(wb, fileName) {
     })
     .sort((a, b) => b.deriv - a.deriv);
 
-  // Enriquecer convData con atenciones únicas por médico (campo admision)
+  // Enriquecer convData con recetas únicas por médico (campo admision)
   if (admCol) {
     const admConvSet = {};
     norm.forEach((r) => {
@@ -1451,20 +1452,20 @@ function buildDataFromWorkbook(wb, fileName) {
         abr: med.split(" ")[0],
         ventas: 0,
         unidades: 0,
-        atenciones: 0,
+        recetas: 0,
       };
     ventMap[med].ventas += v;
     ventMap[med].unidades += num(get(r, "can_conversion"));
   });
-  // atenciones de venta
-  atenciones.forEach((a) => {
+  // recetas de venta
+  recetas.forEach((a) => {
     const k = a.medico;
-    if (ventMap[k]) ventMap[k].atenciones = a.seguro + a.particular;
+    if (ventMap[k]) ventMap[k].recetas = a.seguro + a.particular;
   });
   const topMedVentas = Object.values(ventMap)
     .map((d) => ({
       ...d,
-      ticket: d.atenciones > 0 ? d.ventas / d.atenciones : 0,
+      ticket: d.recetas > 0 ? d.ventas / d.recetas : 0,
     }))
     .filter((d) => d.ventas > 0)
     .sort((a, b) => b.ventas - a.ventas)
@@ -1549,12 +1550,13 @@ function buildDataFromWorkbook(wb, fileName) {
     segConv = 0,
     parDeriv = 0,
     parConv = 0;
-  let parVentaNR = 0,   // margen neto PAR no realizado (tot_sinconv − t_costo_sinconv)
-    parRevNR = 0,       // ingreso bruto PAR no realizado (tot_sinconversion)
+  let parVentaNR = 0, // margen neto PAR no realizado (tot_sinconv − t_costo_sinconv)
+    parRevNR = 0, // ingreso bruto PAR no realizado (tot_sinconversion)
     parStockFail = 0,
     segVentaNR = 0;
   // Precio ponderado PAR: Σ(tot_conversion PAR) / Σ(can_conversion PAR)
-  let parSumRev = 0, parSumConv = 0;
+  let parSumRev = 0,
+    parSumConv = 0;
 
   norm.forEach((r) => {
     const tipo = getTipo(r);
@@ -1576,21 +1578,21 @@ function buildDataFromWorkbook(wb, fileName) {
     } else {
       parDeriv += der;
       parConv += conv;
-      parRevNR  += totS;           // ingreso bruto no capturado
-      parVentaNR += totS - coS;   // margen neto no capturado
+      parRevNR += totS; // ingreso bruto no capturado
+      parVentaNR += totS - coS; // margen neto no capturado
       if (sto <= 0) {
         parStockFail += Math.max(0, der - conv);
       }
       // precio ponderado PAR (solo unidades convertidas como referencia)
       if (conv > 0) {
-        parSumRev  += totC;
+        parSumRev += totC;
         parSumConv += conv;
       }
     }
   });
   // Precio promedio ponderado de unidades PAR convertidas (fallback si no hay sin-convertir)
   const avgPrecioUnd = parSumConv > 0 ? parSumRev / parSumConv : 21.12;
-  const avgCostoUnd  = avgPrecioUnd * 0.789; // mantener ratio aproximado de fallback
+  const avgCostoUnd = avgPrecioUnd * 0.789; // mantener ratio aproximado de fallback
 
   const kpi = {
     tasaGlobal:
@@ -1608,8 +1610,8 @@ function buildDataFromWorkbook(wb, fileName) {
     parConv,
     parSinConv: parDeriv - parConv,
     parStockFail,
-    parVentaNR,  // margen neto PAR no realizado
-    parRevNR,    // ingreso bruto PAR no realizado
+    parVentaNR, // margen neto PAR no realizado
+    parRevNR, // ingreso bruto PAR no realizado
     avgPrecioUnd,
     avgCostoUnd,
   };
@@ -1733,7 +1735,7 @@ function buildDataFromWorkbook(wb, fileName) {
     fechaRango,
     archivoNom: fileName,
     totalRows: rows.length,
-    atenciones,
+    recetas,
     topMedVentas,
     topMedIngreso,
     topMedUnidades,

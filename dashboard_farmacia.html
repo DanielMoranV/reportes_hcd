@@ -42,7 +42,7 @@
       <div class="header-left">
         <h1>Dashboard Farmacia</h1>
         <p id="headerSubtitle">
-          Atenciones por Médico &mdash;
+          Recetas por Médico &mdash;
           <span id="dashHeaderDate">Sin datos cargados</span>
         </p>
       </div>
@@ -56,7 +56,7 @@
           <div class="kpi-icon">🏥</div>
           <div class="kpi-info">
             <div class="value">241</div>
-            <div class="label">Total Atenciones</div>
+            <div class="label">Total Recetas</div>
           </div>
         </div>
         <div class="kpi-card seguro">
@@ -81,7 +81,7 @@
         <div class="card">
           <div class="card-header">
             <div>
-              <h2>Atenciones por Médico</h2>
+              <h2>Recetas por Médico</h2>
               <div class="subtitle" id="barSubtitle">
                 Agrupado por tipo de atención
               </div>
@@ -127,7 +127,7 @@
           <div class="card-header">
             <div>
               <h2>Ranking Médicos</h2>
-              <div class="subtitle">Por total de atenciones</div>
+              <div class="subtitle">Por total de recetas</div>
             </div>
           </div>
           <div class="card-body" style="padding: 0">
@@ -181,7 +181,7 @@
                 Ticket promedio por atención
                 <i
                   class="fi tip-down"
-                  data-f="Fórmula: tot_conversion ÷ admisiones_únicas&#10;Total vendido ÷ nº atenciones del médico"
+                  data-f="Fórmula: tot_conversion ÷ admisiones_únicas&#10;Total vendido ÷ nº recetas del médico"
                   >i</i
                 >
               </div>
@@ -266,7 +266,7 @@
               <canvas id="pieChart"></canvas>
               <div class="pie-center-label" id="pieCenterLabel">
                 <div class="big">241</div>
-                <div class="small">Atenciones</div>
+                <div class="small">Recetas</div>
               </div>
             </div>
             <div class="pie-legend">
@@ -283,9 +283,7 @@
                       style="width: 51.9%; background: #2e86de"
                     ></div>
                   </div>
-                  <div class="pie-value">
-                    atenciones con cobertura de seguro
-                  </div>
+                  <div class="pie-value">recetas con cobertura de seguro</div>
                 </div>
               </div>
               <div class="pie-legend-item">
@@ -301,7 +299,7 @@
                       style="width: 48.1%; background: #f39c12"
                     ></div>
                   </div>
-                  <div class="pie-value">atenciones sin cobertura</div>
+                  <div class="pie-value">recetas sin cobertura</div>
                 </div>
               </div>
             </div>
@@ -483,7 +481,7 @@
                   data-conv-mode="aten"
                   onclick="setConvMode('aten')"
                 >
-                  Atenciones
+                  Recetas
                 </button>
               </div>
               <div class="legend" id="convLegend">
@@ -644,7 +642,7 @@
           <div class="kpi-icon">🚨</div>
           <div class="kpi-info">
             <div class="value">97</div>
-            <div class="label">Atenciones afectadas</div>
+            <div class="label">Recetas afectadas</div>
           </div>
         </div>
         <!-- <div class="kpi-card stk-cero">
@@ -751,8 +749,12 @@
 
       <!-- Escenarios de mejora -->
       <p class="sc-legend">
-        Escenarios de conversión &mdash; solo atenciones Particular
-        <i class="fi tip-down" data-f="Meta% × Derivadas PAR = Nuevas conv. proyectadas · Δ = máx(0, Nuevas − Conv. actuales) · Ingreso adicional = Δ × (Ingreso no realizado ÷ Uds. sin convertir) · Ganancia adicional = Δ × (Margen no realizado ÷ Uds. sin convertir)">i</i>
+        Escenarios de conversión &mdash; solo recetas Particular
+        <i
+          class="fi tip-down"
+          data-f="Meta% × Derivadas PAR = Nuevas conv. proyectadas · Δ = máx(0, Nuevas − Conv. actuales) · Ingreso adicional = Δ × (Ingreso no realizado ÷ Uds. sin convertir) · Ganancia adicional = Δ × (Margen no realizado ÷ Uds. sin convertir)"
+          >i</i
+        >
       </p>
       <div class="scenario-grid">
         <div class="sc-card sc-actual">
