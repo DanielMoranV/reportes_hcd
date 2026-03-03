@@ -623,93 +623,96 @@
       <!-- ═══════════════════════════════════════════════════════════════════ -->
       <!-- SECCIÓN: MEDICAMENTOS SIN STOCK                                    -->
       <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <!-- OCULTO TEMPORALMENTE - quitar display:none para mostrar -->
+      <div style="display: none">
+        <div class="section-divider">
+          <div class="sdot"></div>
+          <h3>Medicamentos Sin Stock al Momento de la Atención</h3>
+        </div>
 
-      <!-- <div class="section-divider">
-        <div class="sdot"></div>
-        <h3>Medicamentos Sin Stock al Momento de la Atención</h3>
-      </div> -->
+        <!-- KPI SIN STOCK -->
+        <div class="sinstock-kpi">
+          <div class="kpi-card stk-prod">
+            <div class="kpi-icon">📋</div>
+            <div class="kpi-info">
+              <div class="value">103</div>
+              <div class="label">Productos distintos sin stock</div>
+            </div>
+          </div>
+          <div class="kpi-card stk-aten">
+            <div class="kpi-icon">🚨</div>
+            <div class="kpi-info">
+              <div class="value">97</div>
+              <div class="label">Recetas afectadas</div>
+            </div>
+          </div>
+          <div class="kpi-card stk-seg">
+            <div class="kpi-icon">⚖️</div>
+            <div class="kpi-info">
+              <div class="value">183</div>
+              <div class="label">Total de unidades sin stock</div>
+            </div>
+          </div>
+        </div>
 
-      <!-- KPI SIN STOCK -->
-      <!-- <div class="sinstock-kpi">
-        <div class="kpi-card stk-prod">
-          <div class="kpi-icon">📋</div>
-          <div class="kpi-info">
-            <div class="value">103</div>
-            <div class="label">Productos distintos sin stock</div>
-          </div>
-        </div>
-        <div class="kpi-card stk-aten">
-          <div class="kpi-icon">🚨</div>
-          <div class="kpi-info">
-            <div class="value">97</div>
-            <div class="label">Recetas afectadas</div>
-          </div>
-        </div>
-        <div class="kpi-card stk-seg">
-          <div class="kpi-icon">⚖️</div>
-          <div class="kpi-info">
-            <div class="value">183</div>
-            <div class="label">Total de unidades sin stock</div>
-          </div>
-        </div>
-      </div> -->
-
-      <!-- <div class="card" style="margin-bottom: 20px">
-        <div class="card-header">
-          <div>
-            <h2>Productos Sin Stock — Top 20 por Frecuencia</h2>
-            <div class="subtitle">
-              Veces que se atendió sin existencia en almacén · Coloreado por
-              tasa de conversión alcanzada
+        <div class="card" style="margin-bottom: 20px">
+          <div class="card-header">
+            <div>
+              <h2>Productos Sin Stock — Top 20 por Frecuencia</h2>
+              <div class="subtitle">
+                Veces que se atendió sin existencia en almacén · Coloreado por
+                tasa de conversión alcanzada
+              </div>
+            </div>
+            <div class="legend" style="gap: 14px">
+              <div class="legend-item">
+                <div
+                  class="legend-dot"
+                  style="background: #fde8e8; border: 1px solid #fca5a5"
+                ></div>
+                <span style="font-size: 0.72rem">0% conv.</span>
+              </div>
+              <div class="legend-item">
+                <div
+                  class="legend-dot"
+                  style="background: #fef3c7; border: 1px solid #fcd34d"
+                ></div>
+                <span style="font-size: 0.72rem">&lt;50%</span>
+              </div>
+              <div class="legend-item">
+                <div
+                  class="legend-dot"
+                  style="background: #d1fae5; border: 1px solid #6ee7b7"
+                ></div>
+                <span style="font-size: 0.72rem">≥50%</span>
+              </div>
             </div>
           </div>
-          <div class="legend" style="gap: 14px">
-            <div class="legend-item">
-              <div
-                class="legend-dot"
-                style="background: #fde8e8; border: 1px solid #fca5a5"
-              ></div>
-              <span style="font-size: 0.72rem">0% conv.</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-dot"
-                style="background: #fef3c7; border: 1px solid #fcd34d"
-              ></div>
-              <span style="font-size: 0.72rem">&lt;50%</span>
-            </div>
-            <div class="legend-item">
-              <div
-                class="legend-dot"
-                style="background: #d1fae5; border: 1px solid #6ee7b7"
-              ></div>
-              <span style="font-size: 0.72rem">≥50%</span>
-            </div>
+          <div class="card-body" style="padding: 0">
+            <table class="sinstock-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Producto</th>
+                  <th class="r">Veces sin stock</th>
+                  <th class="r">Unds. recetadas</th>
+                  <th class="r">Unds. vendidas</th>
+                  <th class="r">
+                    % Conversión
+                    <i
+                      class="fi tip-down tip-r"
+                      data-f="Fórmula: can_conversion ÷ can_derivada × 100&#10;(con sto_med = 0 al momento de la receta)"
+                      >i</i
+                    >
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="sinstockBody"></tbody>
+            </table>
           </div>
         </div>
-        <div class="card-body" style="padding: 0">
-          <table class="sinstock-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Producto</th>
-                <th class="r">Veces sin stock</th>
-                <th class="r">Unds. recetadas</th>
-                <th class="r">Unds. vendidas</th>
-                <th class="r">
-                  % Conversión
-                  <i
-                    class="fi tip-down tip-r"
-                    data-f="Fórmula: can_conversion ÷ can_derivada × 100&#10;(con sto_med = 0 al momento de la receta)"
-                    >i</i
-                  >
-                </th>
-              </tr>
-            </thead>
-            <tbody id="sinstockBody"></tbody>
-          </table>
-        </div>
-      </div> -->
+      </div>
+      <!-- /OCULTO TEMPORALMENTE -->
 
       <!-- ═══════════════════════════════════════════════════════════════════ -->
       <!-- SECCIÓN: PROYECCIONES Y ESTRATEGIAS                                -->
