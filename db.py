@@ -35,8 +35,9 @@ def obtener_historias_por_codigos(lista_codigos, fecha_inicio=None, fecha_fin=No
         cur.execute(f"SET search_path TO {DB_SCHEMA}")
         
         # Consulta dinámica base
-        consulta = """
-            SELECT * FROM historias_digitales 
+        consulta_base = """
+            SELECT codigo_servicio_medico as cod_ser, COUNT(*) as cantidad
+            FROM historias_digitales 
             WHERE codigo_servicio_medico IN %s
               AND motivo_consulta IS NOT NULL 
               AND TRIM(motivo_consulta) <> ''
@@ -47,14 +48,16 @@ def obtener_historias_por_codigos(lista_codigos, fecha_inicio=None, fecha_fin=No
         # Agregar condición de fechas si vienen en la petición
         if fecha_inicio and fecha_fin:
             # IMPORTANTE: Si tu columna se llama distinto, cambia 'fecha_atencion' por el nombre real
-            consulta += " AND fecha_historia_clinica BETWEEN %s AND %s"
+            consulta_base += " AND fecha_historia_clinica BETWEEN %s AND %s"
             parametros.extend([fecha_inicio, fecha_fin])
             
-        print(f"Ejecutando SQL: {consulta}")
+        consulta_final = consulta_base + " GROUP BY codigo_servicio_medico"
+            
+        print(f"Ejecutando SQL: {consulta_final}")
         print(f"Con parámetros: {parametros}")
         
         # psycopg2 necesita que los parámetros se pasen como tupla
-        cur.execute(consulta, tuple(parametros))
+        cur.execute(consulta_final, tuple(parametros))
         
         # Obtiene todos los resultados
         resultados = cur.fetchall()
