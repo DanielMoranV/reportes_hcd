@@ -1133,7 +1133,11 @@
          ───────────────────────────────────────────────────────── -->
     <script>
       // Esta función recibe un arreglo de códigos y hace el POST al backend
-      async function fetchHistoriasDigitales(codigosUnicos) {
+      async function fetchHistoriasDigitales(
+        codigosUnicos,
+        fechaInicio,
+        fechaFin,
+      ) {
         if (!codigosUnicos || codigosUnicos.length === 0) {
           console.warn("No hay códigos para consultar.");
           return;
@@ -1141,7 +1145,7 @@
 
         try {
           console.log(
-            `Consultando ${codigosUnicos.length} códigos en PostgreSQL...`,
+            `Consultando ${codigosUnicos.length} códigos en PostgreSQL entre ${fechaInicio} y ${fechaFin}...`,
           );
 
           const response = await fetch(
@@ -1151,7 +1155,11 @@
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ codigos: codigosUnicos }),
+              body: JSON.stringify({
+                codigos: codigosUnicos,
+                fecha_inicio: fechaInicio,
+                fecha_fin: fechaFin,
+              }),
             },
           );
 

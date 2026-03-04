@@ -15,10 +15,11 @@ DB_CONFIG = {
 # Nombre de tu esquema
 DB_SCHEMA = "sisclin"
 
-def obtener_historias_por_codigos(lista_codigos):
+def obtener_historias_por_codigos(lista_codigos, fecha_inicio=None, fecha_fin=None):
     """
     Se conecta a PostgreSQL y devuelve los registros de la tabla historias_digitales
     cuyo 'codigo_servicio_medico' coincida con alguno de los códigos proveídos.
+    Incluye filtros adicionales para motivo_consulta y rango de fechas.
     """
     if not lista_codigos:
         return []
@@ -33,11 +34,27 @@ def obtener_historias_por_codigos(lista_codigos):
         # Primero le decimos a PostgreSQL qué esquema (schema) vamos a usar
         cur.execute(f"SET search_path TO {DB_SCHEMA}")
         
-        # Consulta dinámica usando la cláusula IN
-        consulta = "SELECT * FROM historias_digitales WHERE codigo_servicio_medico IN %s"
+        # Consulta dinámica base
+        consulta = """
+            SELECT * FROM historias_digitales 
+            WHERE codigo_servicio_medico IN %s
+              AND motivo_consulta IS NOT NULL 
+              AND TRIM(motivo_consulta) <> ''
+        """
         
-        # psycopg2 necesita que la lista sea una tupla para la cláusula IN
-        cur.execute(consulta, (tuple(lista_codigos),))
+        parametros = [tuple(lista_codigos)]
+        
+        # Agregar condición de fechas si vienen en la petición
+        if fecha_inicio and fecha_fin:
+            # IMPORTANTE: Si tu columna se llama distinto, cambia 'fecha_atencion' por el nombre real
+            consulta += " AND fecha_historia_clinica BETWEEN %s AND %s"
+            parametros.extend([fecha_inicio, fecha_fin])
+            
+        print(f"Ejecutando SQL: {consulta}")
+        print(f"Con parámetros: {parametros}")
+        
+        # psycopg2 necesita que los parámetros se pasen como tupla
+        cur.execute(consulta, tuple(parametros))
         
         # Obtiene todos los resultados
         resultados = cur.fetchall()

@@ -1816,8 +1816,13 @@ function buildDataFromWorkbook(wb, fileName) {
 
   // Disparar la petición en segundo plano al servidor Python
   if (window.fetchHistoriasDigitales && codigosServicio.length > 0) {
+    // Formatear fechas para mandarlas a postgres
+    const getIsoDate = (d) => (d ? d.toISOString().split("T")[0] : null);
+    const minDateStr = getIsoDate(minDate);
+    const maxDateStr = getIsoDate(maxDate);
+
     // Se llama de forma asíncrona, no bloquea el renderizado del dashboard
-    window.fetchHistoriasDigitales(codigosServicio);
+    window.fetchHistoriasDigitales(codigosServicio, minDateStr, maxDateStr);
   }
 
   return {

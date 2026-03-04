@@ -116,9 +116,11 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             datos_json = json.loads(post_data.decode('utf-8'))
             
             lista_codigos = datos_json.get("codigos", [])
+            fecha_inicio = datos_json.get("fecha_inicio")
+            fecha_fin = datos_json.get("fecha_fin")
             
-            # Llamamos a db.py pasándole la lista de códigos
-            datos = db.obtener_historias_por_codigos(lista_codigos)
+            # Llamamos a db.py pasándole la lista de códigos y las fechas
+            datos = db.obtener_historias_por_codigos(lista_codigos, fecha_inicio, fecha_fin)
             
             # Convertimos a JSON (default=str maneja fechas y decimales si los hay)
             body = json.dumps(datos, default=str).encode("utf-8")
