@@ -82,6 +82,7 @@ function showEmptyState() {
     "#kpiMedicos",
     "#kpiRecetasConv",
     "#kpiRecetasSinConv",
+    "#kpiPctRecetasConv",
   ];
   kpiIds.forEach(qset);
 
@@ -306,15 +307,26 @@ function renderDashboard(D) {
     "S/ " + fmtN(Math.round(K.ganPerd));
 
   const elRecConv = document.getElementById("kpiRecetasConv");
-  if (elRecConv) elRecConv.textContent = fmtN(K.segConvGuia + K.parConvGuia);
+  const valConv = K.segConvGuia + K.parConvGuia;
+  if (elRecConv) elRecConv.textContent = fmtN(valConv);
 
   const elRecSinConv = document.getElementById("kpiRecetasSinConv");
+  let valSinConv = 0;
   if (elRecSinConv) {
     const sDeriv = K.segDerivGuia || 0;
     const sConv = K.segConvGuia || 0;
     const pDeriv = K.parDerivGuia || 0;
     const pConv = K.parConvGuia || 0;
-    elRecSinConv.textContent = fmtN(sDeriv - sConv + (pDeriv - pConv));
+    valSinConv = sDeriv - sConv + (pDeriv - pConv);
+    elRecSinConv.textContent = fmtN(valSinConv);
+  }
+
+  const elPctRecConv = document.getElementById("kpiPctRecetasConv");
+  if (elPctRecConv) {
+    const totRec = valConv + valSinConv;
+    if (totRec > 0)
+      elPctRecConv.textContent = ((valConv / totRec) * 100).toFixed(1) + "%";
+    else elPctRecConv.textContent = "0%";
   }
 
   // ── KPIs sin stock ──────────────────────────────────────
@@ -1535,11 +1547,46 @@ function buildDataFromWorkbook(wb, fileName) {
     ventMap[med].ventas += v;
     ventMap[med].unidades += num(get(r, "can_conversion"));
   });
-  // recetas de venta
-  recetas.forEach((a) => {
-    const k = a.medico;
-    if (ventMap[k]) ventMap[k].recetas = a.seguro + a.particular;
-  });
+  // recetas de venta (solo las que tuvieron conversión real)
+  if (admCol) {
+    const admConVentaXMed = {};
+    norm.forEach((r) => {
+      const v = num(get(r, "tot_conversion"));
+      const med = getMed(r);
+      const adm = String(r[admCol] || "").trim();
+      if (v > 0 && adm) {
+        const key = med + "|" + adm;
+        if (!admConVentaXMed[med]) admConVentaXMed[med] = new Set();
+        admConVentaXMed[med].add(adm);
+      }
+    });
+    Object.keys(admConVentaXMed).forEach((med) => {
+      if (ventMap[med]) ventMap[med].recetas = admConVentaXMed[med].size;
+    });
+  } else if (guiaCol) {
+    const guiaConVentaXMed = {};
+    norm.forEach((r) => {
+      const v = num(get(r, "tot_conversion"));
+      const med = getMed(r);
+      const guia = String(r[guiaCol] || "").trim();
+      if (v > 0 && guia) {
+        if (!guiaConVentaXMed[med]) guiaConVentaXMed[med] = new Set();
+        guiaConVentaXMed[med].add(guia);
+      }
+    });
+    Object.keys(guiaConVentaXMed).forEach((med) => {
+      if (ventMap[med]) ventMap[med].recetas = guiaConVentaXMed[med].size;
+    });
+  } else {
+    // Fallback: si no hay agrupadores precisos contaremos ventas donde >0
+    norm.forEach((r) => {
+      const v = num(get(r, "tot_conversion"));
+      const med = getMed(r);
+      if (v > 0 && ventMap[med]) {
+        ventMap[med].recetas++;
+      }
+    });
+  }
   const topMedVentas = Object.values(ventMap)
     .map((d) => ({
       ...d,

@@ -411,32 +411,44 @@
       </div>
 
       <!-- KPI CONVERSIÓN -->
+
       <div class="kpi-row">
-        <div class="kpi-card conv">
-          <div class="kpi-icon">🔄</div>
+        <div class="kpi-card pct-recetas-conv">
+          <div class="kpi-icon">📊</div>
           <div class="kpi-info">
-            <div class="value">45.5%</div>
-            <div class="label">
-              Tasa de conversión global
-              <i
-                class="fi tip-l"
-                data-f="Fórmula: can_conversion ÷ can_derivada × 100&#10;Ej: 2,352 ÷ 5,172 × 100 = 45.5%"
-                >i</i
-              >
+            <div class="value" id="kpiPctRecetasConv">0%</div>
+            <div class="label">% Recetas Convertidas</div>
+          </div>
+        </div>
+        <div style="display: none">
+          <div class="kpi-card conv">
+            <div class="kpi-icon">🔄</div>
+            <div class="kpi-info">
+              <div class="value">45.5%</div>
+              <div class="label">
+                Tasa de conversión global
+                <i
+                  class="fi tip-l"
+                  data-f="Fórmula: can_conversion ÷ can_derivada × 100&#10;Ej: 2,352 ÷ 5,172 × 100 = 45.5%"
+                  >i</i
+                >
+              </div>
             </div>
           </div>
         </div>
-        <div class="kpi-card units">
-          <div class="kpi-icon">📦</div>
-          <div class="kpi-info">
-            <div class="value" id="kpiUnidadesSinVender">2,820</div>
-            <div class="label">
-              Unds. sin vender
-              <i
-                class="fi tip-l"
-                data-f="Fórmula: can_derivada − can_conversion&#10;Ej: 5,172 − 2,352 = 2,820 unidades"
-                >i</i
-              >
+        <div style="display: none">
+          <div class="kpi-card units">
+            <div class="kpi-icon">📦</div>
+            <div class="kpi-info">
+              <div class="value" id="kpiUnidadesSinVender">2,820</div>
+              <div class="label">
+                Unds. sin vender
+                <i
+                  class="fi tip-l"
+                  data-f="Fórmula: can_derivada − can_conversion&#10;Ej: 5,172 − 2,352 = 2,820 unidades"
+                  >i</i
+                >
+              </div>
             </div>
           </div>
         </div>
@@ -454,12 +466,13 @@
             <div class="label">Total Recetas Sin Convertir</div>
           </div>
         </div>
+
         <div class="kpi-card g-real">
           <div class="kpi-icon">✅</div>
           <div class="kpi-info">
             <div class="value">S/ 16,640</div>
             <div class="label">
-              Ganancia neta realizada
+              Utilidad Bruta
               <i
                 class="fi tip-r"
                 data-f="Fórmula: Σ tot_conversion − Σ t_costo_conver&#10;S/ 27,910.87 − S/ 11,270.87 = S/ 16,640"

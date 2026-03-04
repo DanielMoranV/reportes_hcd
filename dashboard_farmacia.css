@@ -125,6 +125,9 @@ body {
 .kpi-card.no-conv-recetas {
   border-color: #dc2626;
 }
+.kpi-card.pct-recetas-conv {
+  border-color: #3b82f6;
+}
 .kpi-card.stk-prod {
   border-color: #f59e0b;
 }
@@ -175,6 +178,9 @@ body {
 .kpi-card.no-conv-recetas .kpi-icon {
   background: #fee2e2;
 }
+.kpi-card.pct-recetas-conv .kpi-icon {
+  background: #dbeafe;
+}
 .kpi-card.stk-prod .kpi-icon {
   background: #fef3c7;
 }
@@ -219,6 +225,9 @@ body {
 }
 .kpi-card.no-conv-recetas .kpi-info .value {
   color: #dc2626;
+}
+.kpi-card.pct-recetas-conv .kpi-info .value {
+  color: #2563eb;
 }
 .kpi-card.stk-prod .kpi-info .value {
   color: #d97706;
