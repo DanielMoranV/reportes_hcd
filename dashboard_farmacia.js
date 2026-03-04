@@ -582,7 +582,7 @@ function renderRankingTable(data) {
   const tbody = document.getElementById("rankingBody");
   tbody.innerHTML = "";
   const maxTotal = Math.max(...data.map((d) => d.seguro + d.particular));
-  data.slice(0, 10).forEach((d, i) => {
+  data.forEach((d, i) => {
     const total = d.seguro + d.particular;
     const segW = ((d.seguro / maxTotal) * 60).toFixed(1);
     const parW = ((d.particular / maxTotal) * 60).toFixed(1);
