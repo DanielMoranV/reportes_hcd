@@ -36,22 +36,25 @@ def obtener_historias_por_codigos(lista_codigos, fecha_inicio=None, fecha_fin=No
         
         # Consulta dinámica base
         consulta_base = """
-            SELECT codigo_servicio_medico as cod_ser, COUNT(*) as cantidad
-            FROM historias_digitales 
-            WHERE codigo_servicio_medico IN %s
-              AND motivo_consulta IS NOT NULL 
-              AND TRIM(motivo_consulta) <> ''
+            SELECT 
+                h.codigo_servicio_medico as cod_ser, 
+                COUNT(*) as cantidad,
+                MAX(s.nombre_servicio) as nombre_medico
+            FROM historias_digitales h
+            LEFT JOIN servicios_medicos s ON h.servicio_medico_id = s.id
+            WHERE h.motivo_consulta IS NOT NULL 
+              AND TRIM(h.motivo_consulta) <> ''
         """
         
-        parametros = [tuple(lista_codigos)]
+        parametros = []
         
         # Agregar condición de fechas si vienen en la petición
         if fecha_inicio and fecha_fin:
             # IMPORTANTE: Si tu columna se llama distinto, cambia 'fecha_atencion' por el nombre real
-            consulta_base += " AND fecha_historia_clinica BETWEEN %s AND %s"
+            consulta_base += " AND h.fecha_historia_clinica BETWEEN %s AND %s"
             parametros.extend([fecha_inicio, fecha_fin])
             
-        consulta_final = consulta_base + " GROUP BY codigo_servicio_medico"
+        consulta_final = consulta_base + " GROUP BY h.codigo_servicio_medico"
             
         print(f"Ejecutando SQL: {consulta_final}")
         print(f"Con parámetros: {parametros}")

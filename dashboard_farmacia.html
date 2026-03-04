@@ -144,9 +144,20 @@
               <div class="subtitle">Por total de recetas</div>
             </div>
           </div>
-          <div class="card-body" style="padding: 0">
-            <table class="ranking-table">
-              <thead>
+          <div
+            class="card-body"
+            style="padding: 0; max-height: 480px; overflow-y: auto"
+          >
+            <table class="ranking-table" style="position: relative">
+              <thead
+                style="
+                  position: sticky;
+                  top: 0;
+                  background: #fff;
+                  z-index: 10;
+                  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+                "
+              >
                 <tr>
                   <th>#</th>
                   <th>Médico</th>
@@ -1251,22 +1262,53 @@
           if (window._recetasData && Array.isArray(window._recetasData)) {
             // Convertir array de base de datos a un mapa (diccionario) para búsqueda rápida
             const dbAtenMap = {};
+            const dbNombres = {};
             datos.forEach((item) => {
               dbAtenMap[item.cod_ser] = parseInt(item.cantidad, 10) || 0;
+              dbNombres[item.cod_ser] =
+                item.nombre_medico || "MÉDICO DESCONOCIDO";
             });
 
-            // Asignar el total a cada médico
+            // Set auxiliar para saber qué códigos_ser ya tenemos en la data del Excel
+            const codigosDelExcel = new Set();
+
+            // 1. Asignar el total a cada médico existente (del Excel)
             window._recetasData.forEach((d) => {
               let suma = 0;
               if (d.codigos && Array.isArray(d.codigos)) {
                 d.codigos.forEach((cod) => {
+                  codigosDelExcel.add(cod);
                   if (dbAtenMap[cod]) suma += dbAtenMap[cod];
                 });
               }
               d.atenciones = suma;
             });
 
-            // Re-renderizar la tabla para mostrar la nueva columna de Atenciones
+            // 2. Agregar médicos que están en PostgreSQL pero NO en el Excel
+            datos.forEach((item) => {
+              if (!codigosDelExcel.has(item.cod_ser)) {
+                window._recetasData.push({
+                  medico: item.nombre_medico
+                    ? item.nombre_medico.toUpperCase()
+                    : "MÉDICO DESCONOCIDO",
+                  seguro: 0,
+                  particular: 0,
+                  atenciones: parseInt(item.cantidad, 10) || 0,
+                  codigos: [item.cod_ser],
+                });
+                codigosDelExcel.add(item.cod_ser); // Para evitar duplicados en el array
+              }
+            });
+
+            // 3. Reordenar: Primero los que tienen recetas, luego por atenciones
+            window._recetasData.sort((a, b) => {
+              const totalA = a.seguro + a.particular;
+              const totalB = b.seguro + b.particular;
+              if (totalA !== totalB) return totalB - totalA;
+              return (b.atenciones || 0) - (a.atenciones || 0);
+            });
+
+            // Re-renderizar la tabla para mostrar la nueva columna de Atenciones y los inyectados
             if (typeof window.renderRankingTable === "function") {
               window.renderRankingTable(window._recetasData);
             }
