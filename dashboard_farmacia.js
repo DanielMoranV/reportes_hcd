@@ -77,6 +77,8 @@ function showEmptyState() {
   if (segLabel) segLabel.textContent = "Seguro";
   const parLabel = document.querySelector(".kpi-card.part .label");
   if (parLabel) parLabel.textContent = "Particular";
+  qset("#kpiAtenciones");
+  qset("#kpiMedicos");
 
   // —— KPIs conversión
   qset(".kpi-card.conv .value");
@@ -274,6 +276,14 @@ function renderDashboard(D) {
   document.querySelector(".kpi-card.part .value").textContent = fmtN(totalPar);
   document.querySelector(".kpi-card.part .label").textContent =
     `Particular (${((totalPar / total) * 100).toFixed(1)}%)`;
+
+  // kpiAtenciones se llena por PostgreSQL, ponemos un placeholder
+  const elAten = document.getElementById("kpiAtenciones");
+  if (elAten) elAten.textContent = "Cargando...";
+
+  // kpiMedicos se llena con la cantidad de médicos en el Excel (D.recetas)
+  const elMed = document.getElementById("kpiMedicos");
+  if (elMed) elMed.textContent = fmtN(D.recetas.length);
 
   // ── KPIs conversión ─────────────────────────────────────
   const K = D.kpi;

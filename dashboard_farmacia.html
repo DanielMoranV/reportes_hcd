@@ -73,6 +73,20 @@
             <div class="label">Particular (48.1%)</div>
           </div>
         </div>
+        <div class="kpi-card total">
+          <div class="kpi-icon">📋</div>
+          <div class="kpi-info">
+            <div class="value" id="kpiAtenciones">—</div>
+            <div class="label">Total Atenciones</div>
+          </div>
+        </div>
+        <div class="kpi-card total">
+          <div class="kpi-icon">👨‍⚕️</div>
+          <div class="kpi-info">
+            <div class="value" id="kpiMedicos">—</div>
+            <div class="label">Total Médicos</div>
+          </div>
+        </div>
       </div>
 
       <!-- CHART + TABLE -->
@@ -1173,16 +1187,35 @@
 
           if (datos.error) {
             console.error("Error desde la base de datos:", datos.error);
-            alert("Error en la base de datos: " + datos.error);
+            const el = document.getElementById("kpiAtenciones");
+            if (el) el.textContent = "Error";
+            // Puedes descomentar el alert si prefieres que salte al haber error
+            // alert("Error en la base de datos: " + datos.error);
             return;
           }
 
-          console.log("✅ ¡Datos recibidos exitosamente de PostgreSQL!", datos);
-          alert(
-            `Se obtuvieron ${datos.length} historias digitales.\nAbre la consola (F12) para ver los datos.`,
+          // Calcular el total de atenciones sumando la columna 'cantidad' devuelta por Postgres
+          let totalAtenciones = 0;
+          datos.forEach((item) => {
+            if (item.cantidad) {
+              totalAtenciones += parseInt(item.cantidad, 10) || 0;
+            }
+          });
+
+          console.log(
+            `✅ ¡Datos recibidos de PostgreSQL! Total atenciones sumadas: ${totalAtenciones}`,
+            datos,
           );
+
+          // Actualizamos la tarjeta del KPI con el número total (formateado con separador de miles si es necesario)
+          const elAten = document.getElementById("kpiAtenciones");
+          if (elAten) {
+            elAten.textContent = totalAtenciones.toLocaleString("es-PE");
+          }
         } catch (error) {
           console.error("❌ Falló la consulta a PostgreSQL:", error);
+          const el = document.getElementById("kpiAtenciones");
+          if (el) el.textContent = "Error";
         }
       }
 
