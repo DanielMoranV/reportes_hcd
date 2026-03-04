@@ -153,6 +153,12 @@
                   <th class="num">Seg.</th>
                   <th class="num">Part.</th>
                   <th class="num">Total</th>
+                  <th
+                    class="num"
+                    title="Atenciones desde base de datos PostgreSQL"
+                  >
+                    Aten.
+                  </th>
                 </tr>
               </thead>
               <tbody id="rankingBody"></tbody>
@@ -1211,6 +1217,31 @@
           const elAten = document.getElementById("kpiAtenciones");
           if (elAten) {
             elAten.textContent = totalAtenciones.toLocaleString("es-PE");
+          }
+
+          // Actualizar la tabla "Ranking Médicos" con las atenciones por médico
+          if (window._recetasData && Array.isArray(window._recetasData)) {
+            // Convertir array de base de datos a un mapa (diccionario) para búsqueda rápida
+            const dbAtenMap = {};
+            datos.forEach((item) => {
+              dbAtenMap[item.cod_ser] = parseInt(item.cantidad, 10) || 0;
+            });
+
+            // Asignar el total a cada médico
+            window._recetasData.forEach((d) => {
+              let suma = 0;
+              if (d.codigos && Array.isArray(d.codigos)) {
+                d.codigos.forEach((cod) => {
+                  if (dbAtenMap[cod]) suma += dbAtenMap[cod];
+                });
+              }
+              d.atenciones = suma;
+            });
+
+            // Re-renderizar la tabla para mostrar la nueva columna de Atenciones
+            if (typeof window.renderRankingTable === "function") {
+              window.renderRankingTable(window._recetasData);
+            }
           }
         } catch (error) {
           console.error("❌ Falló la consulta a PostgreSQL:", error);

@@ -145,7 +145,7 @@ function showEmptyState() {
     }
   };
 
-  empty("rankingBody", 5);
+  empty("rankingBody", 6);
   empty("ventasBody", 5);
   empty("lossBody", 3);
   empty("sinstockBody", 6);
@@ -586,6 +586,11 @@ function renderRankingTable(data) {
     const segW = ((d.seguro / maxTotal) * 60).toFixed(1);
     const parW = ((d.particular / maxTotal) * 60).toFixed(1);
     const isTop = i < 3;
+    const atenciones =
+      d.atenciones !== undefined
+        ? fmtN(d.atenciones)
+        : '<span class="us-spin" style="width:12px;height:12px;border-width:2px;display:inline-block"></span>';
+
     tbody.innerHTML += `<tr>
       <td><span class="rank-num ${isTop ? "top" : ""}">${i + 1}</span></td>
       <td>
@@ -598,6 +603,7 @@ function renderRankingTable(data) {
       <td class="num"><span class="pill seg">${d.seguro}</span></td>
       <td class="num"><span class="pill par">${d.particular}</span></td>
       <td class="num" style="color:#1a2035;font-size:.88rem">${total}</td>
+      <td class="num"><span class="pill" style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb">${atenciones}</span></td>
     </tr>`;
   });
 }
@@ -1327,10 +1333,22 @@ function buildDataFromWorkbook(wb, fileName) {
   norm.forEach((r) => {
     const med = getMed(r);
     const tipo = getTipo(r);
-    if (!atenMap[med]) atenMap[med] = { medico: med, seguro: 0, particular: 0 };
+    const cod = String(
+      get(r, "cod_ser", "codigo_servicio", "cod_servicio") || "",
+    ).trim();
+
+    if (!atenMap[med])
+      atenMap[med] = {
+        medico: med,
+        seguro: 0,
+        particular: 0,
+        codigos: new Set(),
+      };
     if (tipo.includes("SEG")) atenMap[med].seguro++;
     else if (tipo.includes("PAR")) atenMap[med].particular++;
     else atenMap[med].particular++;
+
+    if (cod) atenMap[med].codigos.add(cod);
   });
   // Deduplicar por admision si existe columna admision
   const COL_ADM = ["admision", "adm", "admisión"];
@@ -1342,24 +1360,35 @@ function buildDataFromWorkbook(wb, fileName) {
     norm.forEach((r) => {
       const med = getMed(r);
       const tipo = getTipo(r);
+      const cod = String(
+        get(r, "cod_ser", "codigo_servicio", "cod_servicio") || "",
+      ).trim();
       const adm = String(r[admCol] || "").trim();
       const key = med + "|" + adm;
-      if (!admByMed[key]) admByMed[key] = { med, tipo };
+      if (!admByMed[key]) admByMed[key] = { med, tipo, cod };
+      // Ojo: si una admision tiene multiples codigos de servicio se guarda el primero (poco probable pero posible)
     });
     const atenMap2 = {};
-    Object.values(admByMed).forEach(({ med, tipo }) => {
+    Object.values(admByMed).forEach(({ med, tipo, cod }) => {
       if (!atenMap2[med])
-        atenMap2[med] = { medico: med, seguro: 0, particular: 0 };
+        atenMap2[med] = {
+          medico: med,
+          seguro: 0,
+          particular: 0,
+          codigos: new Set(),
+        };
       if (tipo.includes("SEG")) atenMap2[med].seguro++;
       else atenMap2[med].particular++;
+
+      if (cod) atenMap2[med].codigos.add(cod);
     });
-    recetas = Object.values(atenMap2).sort(
-      (a, b) => b.seguro + b.particular - (a.seguro + a.particular),
-    );
+    recetas = Object.values(atenMap2)
+      .map((d) => ({ ...d, codigos: [...d.codigos] }))
+      .sort((a, b) => b.seguro + b.particular - (a.seguro + a.particular));
   } else {
-    recetas = Object.values(atenMap).sort(
-      (a, b) => b.seguro + b.particular - (a.seguro + a.particular),
-    );
+    recetas = Object.values(atenMap)
+      .map((d) => ({ ...d, codigos: [...d.codigos] }))
+      .sort((a, b) => b.seguro + b.particular - (a.seguro + a.particular));
   }
 
   // ── CONVERSIÓN POR MÉDICO (con especialidad) ──────────────
