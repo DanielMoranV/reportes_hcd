@@ -58,6 +58,15 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     # ------------------------------------------------------------------
+    def do_POST(self):
+        parsed = urllib.parse.urlparse(self.path)
+        
+        if parsed.path == "/api/datos-postgres":
+            self._serve_postgres_data_post()
+        else:
+            self._error(404, "Endpoint no encontrado")
+
+    # ------------------------------------------------------------------
     def _serve_data_file(self, filename: str):
         """Sirve un archivo XLS/XLSX desde DATA_DIR."""
 
@@ -95,10 +104,21 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self._error(500, str(e))
 
     # ------------------------------------------------------------------
-    def _serve_postgres_data(self):
-        """Consulta a la base de datos PostgreSQL usando el módulo db.py"""
+    def _serve_postgres_data_post(self):
+        """Consulta a la base de datos PostgreSQL recibiendo parámetros por POST"""
         try:
-            datos = db.obtener_datos_ejemplo()
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self._error(400, "Falta el cuerpo de la petición (body)")
+                return
+                
+            post_data = self.rfile.read(content_length)
+            datos_json = json.loads(post_data.decode('utf-8'))
+            
+            lista_codigos = datos_json.get("codigos", [])
+            
+            # Llamamos a db.py pasándole la lista de códigos
+            datos = db.obtener_historias_por_codigos(lista_codigos)
             
             # Convertimos a JSON (default=str maneja fechas y decimales si los hay)
             body = json.dumps(datos, default=str).encode("utf-8")
@@ -109,6 +129,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(body)
+        except json.JSONDecodeError:
+            self._error(400, "El formato del cuerpo no es JSON válido")
         except Exception as e:
             self._error(500, f"Error al consultar BD: {str(e)}")
 

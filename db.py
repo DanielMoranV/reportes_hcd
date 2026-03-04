@@ -15,11 +15,14 @@ DB_CONFIG = {
 # Nombre de tu esquema
 DB_SCHEMA = "sisclin"
 
-def obtener_datos_ejemplo():
+def obtener_historias_por_codigos(lista_codigos):
     """
-    Se conecta a PostgreSQL, ejecuta una consulta y devuelve los resultados
-    como una lista de diccionarios.
+    Se conecta a PostgreSQL y devuelve los registros de la tabla historias_digitales
+    cuyo 'codigo_servicio_medico' coincida con alguno de los códigos proveídos.
     """
+    if not lista_codigos:
+        return []
+
     try:
         # Establece la conexión
         conn = psycopg2.connect(**DB_CONFIG)
@@ -30,9 +33,11 @@ def obtener_datos_ejemplo():
         # Primero le decimos a PostgreSQL qué esquema (schema) vamos a usar
         cur.execute(f"SET search_path TO {DB_SCHEMA}")
         
-        # Consulta de ejemplo: cámbiala por la tabla real que necesitas consultar
-        consulta = "SELECT * FROM historias_digitales LIMIT 10"
-        cur.execute(consulta)
+        # Consulta dinámica usando la cláusula IN
+        consulta = "SELECT * FROM historias_digitales WHERE codigo_servicio_medico IN %s"
+        
+        # psycopg2 necesita que la lista sea una tupla para la cláusula IN
+        cur.execute(consulta, (tuple(lista_codigos),))
         
         # Obtiene todos los resultados
         resultados = cur.fetchall()

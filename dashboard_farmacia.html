@@ -1129,14 +1129,30 @@
     <script src="dashboard_farmacia.js"></script>
 
     <!-- ─────────────────────────────────────────────────────────
-         EJEMPLO DE CONEXIÓN JS -> PYTHON -> POSTGRESQL 
+         EJEMPLO DE CONEXIÓN JS -> PYTHON -> POSTGRESQL (CON COD_SER)
          ───────────────────────────────────────────────────────── -->
     <script>
-      async function probarConexionPostgres() {
+      // Esta función recibe un arreglo de códigos y hace el POST al backend
+      async function fetchHistoriasDigitales(codigosUnicos) {
+        if (!codigosUnicos || codigosUnicos.length === 0) {
+          console.warn("No hay códigos para consultar.");
+          return;
+        }
+
         try {
-          console.log("Consultando datos a PostgreSQL mediante Python...");
+          console.log(
+            `Consultando ${codigosUnicos.length} códigos en PostgreSQL...`,
+          );
+
           const response = await fetch(
             "http://localhost:8091/api/datos-postgres",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ codigos: codigosUnicos }),
+            },
           );
 
           if (!response.ok) {
@@ -1149,31 +1165,29 @@
 
           if (datos.error) {
             console.error("Error desde la base de datos:", datos.error);
-            alert(
-              "Error en la base de datos: " +
-                datos.error +
-                "\n\n¿Configuraste db.py?",
-            );
+            alert("Error en la base de datos: " + datos.error);
             return;
           }
 
           console.log("✅ ¡Datos recibidos exitosamente de PostgreSQL!", datos);
-
-          // EJEMPLO: Mostrar visualmente que funcionó
           alert(
-            `Se obtuvieron ${datos.length} filas desde PostgreSQL.\nAbre la consola (F12) para ver los datos.`,
+            `Se obtuvieron ${datos.length} historias digitales.\nAbre la consola (F12) para ver los datos.`,
           );
-
-          // Aquí es donde tomarías los 'datos' y llamarías a una función
-          // que actualice tus tablas o gráficos HTML.
         } catch (error) {
           console.error("❌ Falló la consulta a PostgreSQL:", error);
         }
       }
 
-      // Puedes crear un botón en tu HTML que llame a probarConexionPostgres()
-      // o descomentar la línea de abajo para que se ejecute al cargar el dashboard:
-      // probarConexionPostgres();
+      // Hook temporal: vamos a interceptar la función renderDashboard para poder extraer
+      // los cod_ser del objeto 'D' originado en JS y lanzarlos a Python.
+      // Modificaremos dashboard_farmacia.js rápidamente para que incluya los codigos_ser en 'D'
+      // O, como no queremos tocar el js más de lo necesario, lo extraeremos del caché global '_rawData'
+      // si es que asumiéramos que existe, pero dado que en dashboard_farmacia.js la variable raw `rows`
+      // es local a `buildDataFromWorkbook`, agregaremos temporalmente a 'D' un arr array en el propio JS.
+      // --- ACTUALIZACIÓN: el usuario indicó "JS analiza el excel, existe el campo cod_ser necesito que tome los cod_ser unicos y haga la consulta".
+      // Por ende, dejaremos preparado el window.fetchHistoriasDigitales.
+
+      window.fetchHistoriasDigitales = fetchHistoriasDigitales;
     </script>
   </body>
 </html>

@@ -319,7 +319,8 @@ function renderDashboard(D) {
   const ibSeg = document.querySelector(".insight-box.seg");
   const ibPar = document.querySelector(".insight-box.par");
   if (ibSeg) {
-    const dG = K.segDerivGuia, cG = K.segConvGuia;
+    const dG = K.segDerivGuia,
+      cG = K.segConvGuia;
     ibSeg.querySelector(".ib-big").textContent =
       (dG > 0 ? (cG / dG) * 100 : 0).toFixed(1) + "%";
     const rows = ibSeg.querySelectorAll(".ib-val");
@@ -334,7 +335,8 @@ function renderDashboard(D) {
     }
   }
   if (ibPar) {
-    const dG = K.parDerivGuia, cG = K.parConvGuia;
+    const dG = K.parDerivGuia,
+      cG = K.parConvGuia;
     ibPar.querySelector(".ib-big").textContent =
       (dG > 0 ? (cG / dG) * 100 : 0).toFixed(1) + "%";
     const rows = ibPar.querySelectorAll(".ib-val");
@@ -350,9 +352,10 @@ function renderDashboard(D) {
   // Alerta particular (panel rojo)
   const alertPar = document.querySelector('[style*="fff8f8"] span');
   if (alertPar) {
-    const parPct = K.parDerivGuia > 0
-      ? ((K.parConvGuia / K.parDerivGuia) * 100).toFixed(1)
-      : "0.0";
+    const parPct =
+      K.parDerivGuia > 0
+        ? ((K.parConvGuia / K.parDerivGuia) * 100).toFixed(1)
+        : "0.0";
     alertPar.textContent = `⚠ Los pacientes Particulares convierten apenas el ${parPct}% de sus recetas en ventas.`;
   }
 
@@ -381,8 +384,10 @@ function renderDashboard(D) {
 // PROYECCIONES DINÁMICAS
 // ─────────────────────────────────────────────────────────
 function renderProyecciones(K) {
-  const parPct = K.parDerivGuia > 0 ? (K.parConvGuia / K.parDerivGuia) * 100 : 0;
-  const segPct = K.segDerivGuia > 0 ? (K.segConvGuia / K.segDerivGuia) * 100 : 0;
+  const parPct =
+    K.parDerivGuia > 0 ? (K.parConvGuia / K.parDerivGuia) * 100 : 0;
+  const segPct =
+    K.segDerivGuia > 0 ? (K.segConvGuia / K.segDerivGuia) * 100 : 0;
   const sinConv = K.parDeriv - K.parConv; // unidades sin convertir (para cálculos monetarios)
   const stockFail = Math.max(0, K.parStockFail);
   const activas = Math.max(0, sinConv - stockFail);
@@ -1613,7 +1618,10 @@ function buildDataFromWorkbook(wb, fileName) {
   // Total recetas = total admisiones únicas (con guia + sin guia).
   const COL_GUIA = ["guia", "nro_guia", "num_guia", "guia_nro"];
   const guiaCol = COL_GUIA.find((c) => norm[0][c] !== undefined);
-  let segDerivGuia = 0, segConvGuia = 0, parDerivGuia = 0, parConvGuia = 0;
+  let segDerivGuia = 0,
+    segConvGuia = 0,
+    parDerivGuia = 0,
+    parConvGuia = 0;
   if (guiaCol && admCol) {
     // Map: admision → tiene alguna guia?
     const segAdmMap = new Map();
@@ -1628,12 +1636,13 @@ function buildDataFromWorkbook(wb, fileName) {
       if (g) map.set(adm, true); // al menos una fila con guia → convertida
     });
     segDerivGuia = segAdmMap.size;
-    segConvGuia  = [...segAdmMap.values()].filter(Boolean).length;
+    segConvGuia = [...segAdmMap.values()].filter(Boolean).length;
     parDerivGuia = parAdmMap.size;
-    parConvGuia  = [...parAdmMap.values()].filter(Boolean).length;
+    parConvGuia = [...parAdmMap.values()].filter(Boolean).length;
   } else if (guiaCol) {
     // Fallback sin admision: contar guias únicas
-    const _segG = new Set(), _parG = new Set();
+    const _segG = new Set(),
+      _parG = new Set();
     norm.forEach((r) => {
       const tipo = getTipo(r);
       const g = String(r[guiaCol] || "").trim();
@@ -1641,8 +1650,10 @@ function buildDataFromWorkbook(wb, fileName) {
       if (tipo.includes("SEG")) _segG.add(g);
       else _parG.add(g);
     });
-    segDerivGuia = _segG.size; segConvGuia = _segG.size;
-    parDerivGuia = _parG.size; parConvGuia = _parG.size;
+    segDerivGuia = _segG.size;
+    segConvGuia = _segG.size;
+    parDerivGuia = _parG.size;
+    parConvGuia = _parG.size;
   }
 
   const kpi = {
@@ -1667,10 +1678,10 @@ function buildDataFromWorkbook(wb, fileName) {
     avgCostoUnd,
     // por receta: usa admision+guia; fallback a unidades si no existen ambas columnas
     hasGuiaCol: !!(guiaCol && admCol),
-    segDerivGuia: (guiaCol && admCol) ? segDerivGuia : segDeriv,
-    segConvGuia:  (guiaCol && admCol) ? segConvGuia  : segConv,
-    parDerivGuia: (guiaCol && admCol) ? parDerivGuia : parDeriv,
-    parConvGuia:  (guiaCol && admCol) ? parConvGuia  : parConv,
+    segDerivGuia: guiaCol && admCol ? segDerivGuia : segDeriv,
+    segConvGuia: guiaCol && admCol ? segConvGuia : segConv,
+    parDerivGuia: guiaCol && admCol ? parDerivGuia : parDeriv,
+    parConvGuia: guiaCol && admCol ? parConvGuia : parConv,
   };
 
   // ── ESTRATEGIAS: calcular datos clave ────────────────────
@@ -1788,6 +1799,27 @@ function buildDataFromWorkbook(wb, fileName) {
     mejorMedPar,
   };
 
+  // ── 7. Extraer codigos de servicio únicos y llamar al backend ──
+  const codSerSet = new Set();
+  norm.forEach((r) => {
+    const cod = String(
+      get(r, "cod_ser", "codigo_servicio", "cod_servicio") || "",
+    ).trim();
+    if (cod) codSerSet.add(cod);
+  });
+  const codigosServicio = [...codSerSet];
+
+  // Opcional: imprimir en consola la cantidad encontrada
+  console.log(
+    `Extraídos ${codigosServicio.length} códigos de servicio únicos del Excel.`,
+  );
+
+  // Disparar la petición en segundo plano al servidor Python
+  if (window.fetchHistoriasDigitales && codigosServicio.length > 0) {
+    // Se llama de forma asíncrona, no bloquea el renderizado del dashboard
+    window.fetchHistoriasDigitales(codigosServicio);
+  }
+
   return {
     fechaRango,
     archivoNom: fileName,
@@ -1803,6 +1835,7 @@ function buildDataFromWorkbook(wb, fileName) {
     topProductos,
     kpi,
     estrategias,
+    codigosServicio, // Agregado por si se necesita después en el estado global
   };
 }
 
