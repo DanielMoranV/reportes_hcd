@@ -322,7 +322,7 @@
                 <div class="ib-label">Seguro</div>
                 <div class="ib-big">74.4%</div>
                 <div class="ib-row">
-                  <span class="ib-key">Derivadas</span
+                  <span class="ib-key">Recetas</span
                   ><span class="ib-val">2,991</span>
                 </div>
                 <div class="ib-row">
@@ -344,7 +344,7 @@
                 <div class="ib-label">Particular</div>
                 <div class="ib-big">5.9%</div>
                 <div class="ib-row">
-                  <span class="ib-key">Derivadas</span
+                  <span class="ib-key">Recetas</span
                   ><span class="ib-val">2,181</span>
                 </div>
                 <div class="ib-row">
@@ -1127,5 +1127,53 @@
     </div>
 
     <script src="dashboard_farmacia.js"></script>
+
+    <!-- ─────────────────────────────────────────────────────────
+         EJEMPLO DE CONEXIÓN JS -> PYTHON -> POSTGRESQL 
+         ───────────────────────────────────────────────────────── -->
+    <script>
+      async function probarConexionPostgres() {
+        try {
+          console.log("Consultando datos a PostgreSQL mediante Python...");
+          const response = await fetch(
+            "http://localhost:8091/api/datos-postgres",
+          );
+
+          if (!response.ok) {
+            throw new Error(
+              `Error del servidor: ${response.status} ${response.statusText}`,
+            );
+          }
+
+          const datos = await response.json();
+
+          if (datos.error) {
+            console.error("Error desde la base de datos:", datos.error);
+            alert(
+              "Error en la base de datos: " +
+                datos.error +
+                "\n\n¿Configuraste db.py?",
+            );
+            return;
+          }
+
+          console.log("✅ ¡Datos recibidos exitosamente de PostgreSQL!", datos);
+
+          // EJEMPLO: Mostrar visualmente que funcionó
+          alert(
+            `Se obtuvieron ${datos.length} filas desde PostgreSQL.\nAbre la consola (F12) para ver los datos.`,
+          );
+
+          // Aquí es donde tomarías los 'datos' y llamarías a una función
+          // que actualice tus tablas o gráficos HTML.
+        } catch (error) {
+          console.error("❌ Falló la consulta a PostgreSQL:", error);
+        }
+      }
+
+      // Puedes crear un botón en tu HTML que llame a probarConexionPostgres()
+      // o descomentar la línea de abajo para que se ejecute al cargar el dashboard:
+      // probarConexionPostgres();
+    </script>
   </body>
 </html>

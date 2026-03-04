@@ -315,31 +315,44 @@ function renderDashboard(D) {
       ((totalPar / total) * 100).toFixed(1) + "%";
   }
 
-  // ── Conversión por tipo (insight boxes) ─────────────────
+  // ── Conversión por tipo (insight boxes) — métricas por receta (guia) ───
   const ibSeg = document.querySelector(".insight-box.seg");
   const ibPar = document.querySelector(".insight-box.par");
   if (ibSeg) {
+    const dG = K.segDerivGuia, cG = K.segConvGuia;
     ibSeg.querySelector(".ib-big").textContent =
-      ((K.segConv / K.segDeriv) * 100).toFixed(1) + "%";
+      (dG > 0 ? (cG / dG) * 100 : 0).toFixed(1) + "%";
     const rows = ibSeg.querySelectorAll(".ib-val");
-    if (rows[0]) rows[0].textContent = fmtN(K.segDeriv);
-    if (rows[1]) rows[1].textContent = fmtN(K.segConv);
-    if (rows[2]) rows[2].textContent = fmtN(K.segDeriv - K.segConv);
+    if (rows[0]) rows[0].textContent = fmtN(dG);
+    if (rows[1]) rows[1].textContent = fmtN(cG);
+    if (rows[2]) rows[2].textContent = fmtN(dG - cG);
     if (rows[3]) rows[3].textContent = "S/ " + fmt(K.segVentaNR);
+    // Actualizar etiqueta a "Recetas" cuando existe columna guia
+    if (K.hasGuiaCol) {
+      const keys = ibSeg.querySelectorAll(".ib-key");
+      if (keys[0]) keys[0].textContent = "Recetas";
+    }
   }
   if (ibPar) {
+    const dG = K.parDerivGuia, cG = K.parConvGuia;
     ibPar.querySelector(".ib-big").textContent =
-      ((K.parConv / K.parDeriv) * 100).toFixed(1) + "%";
+      (dG > 0 ? (cG / dG) * 100 : 0).toFixed(1) + "%";
     const rows = ibPar.querySelectorAll(".ib-val");
-    if (rows[0]) rows[0].textContent = fmtN(K.parDeriv);
-    if (rows[1]) rows[1].textContent = fmtN(K.parConv);
-    if (rows[2]) rows[2].textContent = fmtN(K.parDeriv - K.parConv);
+    if (rows[0]) rows[0].textContent = fmtN(dG);
+    if (rows[1]) rows[1].textContent = fmtN(cG);
+    if (rows[2]) rows[2].textContent = fmtN(dG - cG);
     if (rows[3]) rows[3].textContent = "S/ " + fmt(K.parVentaNR);
+    if (K.hasGuiaCol) {
+      const keys = ibPar.querySelectorAll(".ib-key");
+      if (keys[0]) keys[0].textContent = "Recetas";
+    }
   }
   // Alerta particular (panel rojo)
   const alertPar = document.querySelector('[style*="fff8f8"] span');
   if (alertPar) {
-    const parPct = ((K.parConv / K.parDeriv) * 100).toFixed(1);
+    const parPct = K.parDerivGuia > 0
+      ? ((K.parConvGuia / K.parDerivGuia) * 100).toFixed(1)
+      : "0.0";
     alertPar.textContent = `⚠ Los pacientes Particulares convierten apenas el ${parPct}% de sus recetas en ventas.`;
   }
 
@@ -368,9 +381,9 @@ function renderDashboard(D) {
 // PROYECCIONES DINÁMICAS
 // ─────────────────────────────────────────────────────────
 function renderProyecciones(K) {
-  const parPct = K.parDeriv > 0 ? (K.parConv / K.parDeriv) * 100 : 0;
-  const segPct = K.segDeriv > 0 ? (K.segConv / K.segDeriv) * 100 : 0;
-  const sinConv = K.parDeriv - K.parConv;
+  const parPct = K.parDerivGuia > 0 ? (K.parConvGuia / K.parDerivGuia) * 100 : 0;
+  const segPct = K.segDerivGuia > 0 ? (K.segConvGuia / K.segDerivGuia) * 100 : 0;
+  const sinConv = K.parDeriv - K.parConv; // unidades sin convertir (para cálculos monetarios)
   const stockFail = Math.max(0, K.parStockFail);
   const activas = Math.max(0, sinConv - stockFail);
 
@@ -1594,6 +1607,44 @@ function buildDataFromWorkbook(wb, fileName) {
   const avgPrecioUnd = parSumConv > 0 ? parSumRev / parSumConv : 21.12;
   const avgCostoUnd = avgPrecioUnd * 0.789; // mantener ratio aproximado de fallback
 
+  // ── KPIs POR RECETA (campo guia + admision) ──────────────
+  // Lógica: una admision "convirtió" si tiene ≥1 fila con guia (receta emitida).
+  // Una admision "sin convertir" es aquella donde ninguna fila tiene guia.
+  // Total recetas = total admisiones únicas (con guia + sin guia).
+  const COL_GUIA = ["guia", "nro_guia", "num_guia", "guia_nro"];
+  const guiaCol = COL_GUIA.find((c) => norm[0][c] !== undefined);
+  let segDerivGuia = 0, segConvGuia = 0, parDerivGuia = 0, parConvGuia = 0;
+  if (guiaCol && admCol) {
+    // Map: admision → tiene alguna guia?
+    const segAdmMap = new Map();
+    const parAdmMap = new Map();
+    norm.forEach((r) => {
+      const tipo = getTipo(r);
+      const adm = String(r[admCol] || "").trim();
+      if (!adm) return;
+      const g = String(r[guiaCol] || "").trim();
+      const map = tipo.includes("SEG") ? segAdmMap : parAdmMap;
+      if (!map.has(adm)) map.set(adm, false);
+      if (g) map.set(adm, true); // al menos una fila con guia → convertida
+    });
+    segDerivGuia = segAdmMap.size;
+    segConvGuia  = [...segAdmMap.values()].filter(Boolean).length;
+    parDerivGuia = parAdmMap.size;
+    parConvGuia  = [...parAdmMap.values()].filter(Boolean).length;
+  } else if (guiaCol) {
+    // Fallback sin admision: contar guias únicas
+    const _segG = new Set(), _parG = new Set();
+    norm.forEach((r) => {
+      const tipo = getTipo(r);
+      const g = String(r[guiaCol] || "").trim();
+      if (!g) return;
+      if (tipo.includes("SEG")) _segG.add(g);
+      else _parG.add(g);
+    });
+    segDerivGuia = _segG.size; segConvGuia = _segG.size;
+    parDerivGuia = _parG.size; parConvGuia = _parG.size;
+  }
+
   const kpi = {
     tasaGlobal:
       totalDeriv > 0
@@ -1614,6 +1665,12 @@ function buildDataFromWorkbook(wb, fileName) {
     parRevNR, // ingreso bruto PAR no realizado
     avgPrecioUnd,
     avgCostoUnd,
+    // por receta: usa admision+guia; fallback a unidades si no existen ambas columnas
+    hasGuiaCol: !!(guiaCol && admCol),
+    segDerivGuia: (guiaCol && admCol) ? segDerivGuia : segDeriv,
+    segConvGuia:  (guiaCol && admCol) ? segConvGuia  : segConv,
+    parDerivGuia: (guiaCol && admCol) ? parDerivGuia : parDeriv,
+    parConvGuia:  (guiaCol && admCol) ? parConvGuia  : parConv,
   };
 
   // ── ESTRATEGIAS: calcular datos clave ────────────────────

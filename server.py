@@ -18,6 +18,8 @@ import socketserver
 import os
 import urllib.parse
 from pathlib import Path
+import json
+import db
 
 # ── Configuración ──────────────────────────────────────────
 PORT     = 8091
@@ -49,6 +51,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             # Quitar el prefijo "/data/" y decodificar %20, etc.
             raw_name = urllib.parse.unquote(parsed.path[len("/data/"):])
             self._serve_data_file(raw_name)
+        elif parsed.path == "/api/datos-postgres":
+            self._serve_postgres_data()
         else:
             # Archivos estáticos normales (HTML, CSS, JS, …)
             super().do_GET()
@@ -89,6 +93,24 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(data)
         except OSError as e:
             self._error(500, str(e))
+
+    # ------------------------------------------------------------------
+    def _serve_postgres_data(self):
+        """Consulta a la base de datos PostgreSQL usando el módulo db.py"""
+        try:
+            datos = db.obtener_datos_ejemplo()
+            
+            # Convertimos a JSON (default=str maneja fechas y decimales si los hay)
+            body = json.dumps(datos, default=str).encode("utf-8")
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(body)
+        except Exception as e:
+            self._error(500, f"Error al consultar BD: {str(e)}")
 
     # ------------------------------------------------------------------
     def _error(self, code: int, msg: str):
