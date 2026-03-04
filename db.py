@@ -8,9 +8,12 @@ DB_CONFIG = {
     "port": "5433",
     "dbname": "backend_csr",
     "user": "csr_user",
-    "password": "csr_secure_2024",
-    "schema": "sisclin"
+    "password": "csr_secure_2024"
+    # El esquema ('schema') se aplicará en la consulta, no en DB_CONFIG
 }
+
+# Nombre de tu esquema
+DB_SCHEMA = "sisclin"
 
 def obtener_datos_ejemplo():
     """
@@ -23,6 +26,9 @@ def obtener_datos_ejemplo():
         
         # Cursor que devuelve los resultados como diccionarios (clave=valor)
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Primero le decimos a PostgreSQL qué esquema (schema) vamos a usar
+        cur.execute(f"SET search_path TO {DB_SCHEMA}")
         
         # Consulta de ejemplo: cámbiala por la tabla real que necesitas consultar
         consulta = "SELECT * FROM historias_digitales LIMIT 10"
