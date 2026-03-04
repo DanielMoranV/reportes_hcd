@@ -69,18 +69,26 @@ function showEmptyState() {
     if (el) el.textContent = "—";
   };
 
-  // —— KPIs superiores (recetas)
-  qset(".kpi-card.total .value");
-  qset(".kpi-card.seguro .value");
-  qset(".kpi-card.part .value");
+  // —— KPIs numéricos
+  const kpiIds = [
+    ".kpi-card.total .value",
+    ".kpi-card.seguro .value",
+    ".kpi-card.part .value",
+    ".kpi-card.conv .value",
+    "#kpiUnidadesSinVender",
+    ".kpi-card.g-real .value",
+    ".kpi-card.g-perd .value",
+    "#kpiAtenciones",
+    "#kpiMedicos",
+    "#kpiRecetasConv",
+    "#kpiRecetasSinConv",
+  ];
+  kpiIds.forEach(qset);
+
   const segLabel = document.querySelector(".kpi-card.seguro .label");
   if (segLabel) segLabel.textContent = "Seguro";
   const parLabel = document.querySelector(".kpi-card.part .label");
   if (parLabel) parLabel.textContent = "Particular";
-  qset("#kpiAtenciones");
-  qset("#kpiMedicos");
-
-  // —— KPIs conversión
   qset(".kpi-card.conv .value");
   set("kpiUnidadesSinVender", "—");
   qset(".kpi-card.g-real .value");
@@ -296,6 +304,18 @@ function renderDashboard(D) {
     "S/ " + fmtN(Math.round(K.ganReal));
   document.querySelector(".kpi-card.g-perd .value").textContent =
     "S/ " + fmtN(Math.round(K.ganPerd));
+
+  const elRecConv = document.getElementById("kpiRecetasConv");
+  if (elRecConv) elRecConv.textContent = fmtN(K.segConvGuia + K.parConvGuia);
+
+  const elRecSinConv = document.getElementById("kpiRecetasSinConv");
+  if (elRecSinConv) {
+    const sDeriv = K.segDerivGuia || 0;
+    const sConv = K.segConvGuia || 0;
+    const pDeriv = K.parDerivGuia || 0;
+    const pConv = K.parConvGuia || 0;
+    elRecSinConv.textContent = fmtN(sDeriv - sConv + (pDeriv - pConv));
+  }
 
   // ── KPIs sin stock ──────────────────────────────────────
   const ssProds = D.sinStockData.length;
