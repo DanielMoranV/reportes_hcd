@@ -485,6 +485,7 @@ function set(id, txt) {
 // ─────────────────────────────────────────────────────────
 function renderBarChart(data) {
   _recetasData = data;
+  window._recetasData = data; // Export it for fetchHistoriasDigitales to access
   destroyChart("barChart");
   const labels = data.map((d) => abreviar(d.medico));
   const totales = data.map((d) => d.seguro + d.particular);
