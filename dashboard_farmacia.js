@@ -29,6 +29,14 @@ let _convData = null;
 let ventasMedMode = "uni"; // "uni" | "sep"
 let _ventasMedData = null;
 
+// ── Estado toggle meds ingreso chart ───────────────────────────────
+let medsIngresoMode = "uni"; // "uni" | "sep"
+let _medsIngresoData = null;
+
+// ── Estado toggle meds unidades chart ───────────────────────────────
+let medsUnidadesMode = "uni"; // "uni" | "sep"
+let _medsUnidadesData = null;
+
 // ─────────────────────────────────────────────────────────
 // CACHÉ EN localStorage
 // ─────────────────────────────────────────────────────────
@@ -224,6 +232,28 @@ function showEmptyState() {
   if (vmedSub)
     vmedSub.textContent =
       "Total venta realizada (S/) — exluye médicos sin conversiones";
+
+  // —— Reset toggle meds ingreso chart
+  medsIngresoMode = "uni";
+  _medsIngresoData = null;
+  document.querySelectorAll("[data-mingreso-mode]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.mingresoMode === "uni");
+  });
+  const mingresoLegend = document.getElementById("mingresoLegend");
+  if (mingresoLegend) mingresoLegend.style.display = "none";
+  const mingresoSub = document.getElementById("medsIngresoSubtitle");
+  if (mingresoSub) mingresoSub.textContent = "Monto total vendido (S/)";
+
+  // —— Reset toggle meds unidades chart
+  medsUnidadesMode = "uni";
+  _medsUnidadesData = null;
+  document.querySelectorAll("[data-munidades-mode]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.munidadesMode === "uni");
+  });
+  const munidadesLegend = document.getElementById("munidadesLegend");
+  if (munidadesLegend) munidadesLegend.style.display = "none";
+  const munidadesSub = document.getElementById("medsUnidadesSubtitle");
+  if (munidadesSub) munidadesSub.textContent = "Cantidad de unidades vendidas";
 
   // —— Barra superior de estado
   setStatus(
@@ -793,21 +823,45 @@ function renderVentasBody(data) {
 
 // TOP MEDS INGRESO CHART
 function renderMedsIngresoChart(data) {
+  _medsIngresoData = data;
   destroyChart("medsIngresoChart");
   const ctx = document.getElementById("medsIngresoChart").getContext("2d");
+  const labels = [...data].reverse().map((p) => p.producto);
+  let datasets;
+  if (medsIngresoMode === "sep") {
+    datasets = [
+      {
+        label: "Seguro (S/)",
+        data: [...data].reverse().map((p) => p.ingresoSeg),
+        backgroundColor: "#2e86de",
+        borderRadius: 4,
+        borderSkipped: false,
+      },
+      {
+        label: "Particular (S/)",
+        data: [...data].reverse().map((p) => p.ingresoPar),
+        backgroundColor: "#f39c12",
+        borderRadius: 4,
+        borderSkipped: false,
+      },
+    ];
+  } else {
+    datasets = [
+      {
+        label: "Ingreso (S/)",
+        data: [...data].reverse().map((p) => p.ingreso),
+        backgroundColor: "#2e86de",
+        borderRadius: 4,
+        borderSkipped: false,
+      },
+    ];
+  }
+
   charts["medsIngresoChart"] = new Chart(ctx, {
     type: "bar",
     data: {
-      labels: [...data].reverse().map((p) => p.producto),
-      datasets: [
-        {
-          label: "Ingreso (S/)",
-          data: [...data].reverse().map((p) => p.ingreso),
-          backgroundColor: "#2e86de",
-          borderRadius: 4,
-          borderSkipped: false,
-        },
-      ],
+      labels,
+      datasets,
     },
     options: {
       indexAxis: "y",
@@ -817,16 +871,26 @@ function renderMedsIngresoChart(data) {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: (item) => ` S/ ${item.raw.toFixed(2)}`,
+            label: (item) =>
+              ` S/ ${item.raw.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`,
             afterBody: (items) => {
               const idx = data.length - 1 - items[0].dataIndex;
-              return `Unds. vendidas: ${data[idx].unidades}`;
+              const d = data[idx];
+              return [
+                `Unds. vendidas: ${d.unidades}`,
+                ...(medsIngresoMode === "sep"
+                  ? [
+                      `Total: S/ ${d.ingreso.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`,
+                    ]
+                  : []),
+              ];
             },
           },
         },
       },
       scales: {
         x: {
+          stacked: medsIngresoMode === "sep",
           beginAtZero: true,
           grid: { color: "#f0f2f5" },
           ticks: {
@@ -836,6 +900,7 @@ function renderMedsIngresoChart(data) {
           },
         },
         y: {
+          stacked: medsIngresoMode === "sep",
           grid: { display: false },
           ticks: { font: { size: 10 }, color: "#374151" },
         },
@@ -844,23 +909,63 @@ function renderMedsIngresoChart(data) {
   });
 }
 
+function setMedsIngresoMode(mode) {
+  medsIngresoMode = mode;
+  document.querySelectorAll("[data-mingreso-mode]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.mingresoMode === mode);
+  });
+  const legend = document.getElementById("mingresoLegend");
+  if (legend) legend.style.display = mode === "sep" ? "" : "none";
+  const sub = document.getElementById("medsIngresoSubtitle");
+  if (sub)
+    sub.textContent =
+      mode === "sep"
+        ? "Agrupado por tipo de atención"
+        : "Monto total vendido (S/)";
+  if (_medsIngresoData) renderMedsIngresoChart(_medsIngresoData);
+}
+
 // TOP MEDS UNIDADES CHART
 function renderMedsUnidadesChart(data) {
+  _medsUnidadesData = data;
   destroyChart("medsUnidadesChart");
   const ctx = document.getElementById("medsUnidadesChart").getContext("2d");
+  const labels = [...data].reverse().map((p) => p.producto);
+  let datasets;
+  if (medsUnidadesMode === "sep") {
+    datasets = [
+      {
+        label: "Seguro",
+        data: [...data].reverse().map((p) => p.unidadesSeg),
+        backgroundColor: "#2e86de",
+        borderRadius: 4,
+        borderSkipped: false,
+      },
+      {
+        label: "Particular",
+        data: [...data].reverse().map((p) => p.unidadesPar),
+        backgroundColor: "#f39c12",
+        borderRadius: 4,
+        borderSkipped: false,
+      },
+    ];
+  } else {
+    datasets = [
+      {
+        label: "Unds.",
+        data: [...data].reverse().map((p) => p.unidades),
+        backgroundColor: "#8b5cf6",
+        borderRadius: 4,
+        borderSkipped: false,
+      },
+    ];
+  }
+
   charts["medsUnidadesChart"] = new Chart(ctx, {
     type: "bar",
     data: {
-      labels: [...data].reverse().map((p) => p.producto),
-      datasets: [
-        {
-          label: "Unds.",
-          data: [...data].reverse().map((p) => p.unidades),
-          backgroundColor: "#8b5cf6",
-          borderRadius: 4,
-          borderSkipped: false,
-        },
-      ],
+      labels,
+      datasets,
     },
     options: {
       indexAxis: "y",
@@ -870,27 +975,51 @@ function renderMedsUnidadesChart(data) {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: (item) => ` ${item.raw} unds.`,
+            label: (item) => ` ${item.raw} unids.`,
             afterBody: (items) => {
               const idx = data.length - 1 - items[0].dataIndex;
-              return `Ingreso: S/ ${data[idx].ingreso.toFixed(2)}`;
+              const d = data[idx];
+              return [
+                `Ingreso: S/ ${d.ingreso.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`,
+                ...(medsUnidadesMode === "sep"
+                  ? [`Total unds.: ${d.unidades}`]
+                  : []),
+              ];
             },
           },
         },
       },
       scales: {
         x: {
+          stacked: medsUnidadesMode === "sep",
           beginAtZero: true,
           grid: { color: "#f0f2f5" },
           ticks: { font: { size: 10 }, color: "#9ca3af" },
         },
         y: {
+          stacked: medsUnidadesMode === "sep",
           grid: { display: false },
           ticks: { font: { size: 10 }, color: "#374151" },
         },
       },
     },
   });
+}
+
+function setMedsUnidadesMode(mode) {
+  medsUnidadesMode = mode;
+  document.querySelectorAll("[data-munidades-mode]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.munidadesMode === mode);
+  });
+  const legend = document.getElementById("munidadesLegend");
+  if (legend) legend.style.display = mode === "sep" ? "" : "none";
+  const sub = document.getElementById("medsUnidadesSubtitle");
+  if (sub)
+    sub.textContent =
+      mode === "sep"
+        ? "Agrupado por tipo de atención"
+        : "Cantidad de unidades vendidas";
+  if (_medsUnidadesData) renderMedsUnidadesChart(_medsUnidadesData);
 }
 
 // SIN STOCK TABLE
@@ -1682,10 +1811,28 @@ function buildDataFromWorkbook(wb, fileName) {
       .toUpperCase()
       .trim();
     if (!prod) return;
+    const tipo = getTipo(r);
     if (!prodMap[prod])
-      prodMap[prod] = { producto: prod, ingreso: 0, unidades: 0 };
-    prodMap[prod].ingreso += num(get(r, "tot_conversion", "tot_conv"));
-    prodMap[prod].unidades += num(get(r, "can_conversion", "can_conv"));
+      prodMap[prod] = {
+        producto: prod,
+        ingreso: 0,
+        ingresoSeg: 0,
+        ingresoPar: 0,
+        unidades: 0,
+        unidadesSeg: 0,
+        unidadesPar: 0,
+      };
+    const ingr = num(get(r, "tot_conversion", "tot_conv"));
+    const unids = num(get(r, "can_conversion", "can_conv"));
+    prodMap[prod].ingreso += ingr;
+    prodMap[prod].unidades += unids;
+    if (tipo.includes("SEG")) {
+      prodMap[prod].ingresoSeg += ingr;
+      prodMap[prod].unidadesSeg += unids;
+    } else {
+      prodMap[prod].ingresoPar += ingr;
+      prodMap[prod].unidadesPar += unids;
+    }
   });
   const topAllProds = Object.values(prodMap).filter((p) => p.ingreso > 0);
   const topMedIngreso = [...topAllProds]

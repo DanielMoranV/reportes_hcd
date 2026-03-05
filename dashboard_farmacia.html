@@ -277,7 +277,37 @@
           <div class="card-header">
             <div>
               <h2>Top 10 por Ingreso</h2>
-              <div class="subtitle">Monto total vendido (S/)</div>
+              <div class="subtitle" id="medsIngresoSubtitle">
+                Monto total vendido (S/)
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px">
+              <div class="bar-toggle">
+                <button
+                  class="bt-btn active"
+                  data-mingreso-mode="uni"
+                  onclick="setMedsIngresoMode('uni')"
+                >
+                  Unificado
+                </button>
+                <button
+                  class="bt-btn"
+                  data-mingreso-mode="sep"
+                  onclick="setMedsIngresoMode('sep')"
+                >
+                  Separado
+                </button>
+              </div>
+              <div class="legend" id="mingresoLegend" style="display: none">
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #2e86de"></div>
+                  Seguro
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #f39c12"></div>
+                  Particular
+                </div>
+              </div>
             </div>
           </div>
           <div class="card-body">
@@ -291,7 +321,37 @@
           <div class="card-header">
             <div>
               <h2>Top 10 por Unidades</h2>
-              <div class="subtitle">Cantidad de unidades vendidas</div>
+              <div class="subtitle" id="medsUnidadesSubtitle">
+                Cantidad de unidades vendidas
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px">
+              <div class="bar-toggle">
+                <button
+                  class="bt-btn active"
+                  data-munidades-mode="uni"
+                  onclick="setMedsUnidadesMode('uni')"
+                >
+                  Unificado
+                </button>
+                <button
+                  class="bt-btn"
+                  data-munidades-mode="sep"
+                  onclick="setMedsUnidadesMode('sep')"
+                >
+                  Separado
+                </button>
+              </div>
+              <div class="legend" id="munidadesLegend" style="display: none">
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #2e86de"></div>
+                  Seguro
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #f39c12"></div>
+                  Particular
+                </div>
+              </div>
             </div>
           </div>
           <div class="card-body">
@@ -1213,7 +1273,8 @@
       &nbsp;|&nbsp; HCD
     </div>
 
-    <script src="dashboard_farmacia.js"></script>
+    <!-- SCRIPT PRINCIPAL -->
+    <script src="dashboard_farmacia.js?v=2"></script>
 
     <!-- ─────────────────────────────────────────────────────────
          EJEMPLO DE CONEXIÓN JS -> PYTHON -> POSTGRESQL (CON COD_SER)
