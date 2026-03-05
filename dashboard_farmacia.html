@@ -192,8 +192,36 @@
           <div class="card-header">
             <div>
               <h2>Ingresos por Médico</h2>
-              <div class="subtitle">
+              <div class="subtitle" id="ventasMedSubtitle">
                 Total venta realizada (S/) — exluye médicos sin conversiones
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px">
+              <div class="bar-toggle">
+                <button
+                  class="bt-btn active"
+                  data-vmed-mode="uni"
+                  onclick="setVentasMedMode('uni')"
+                >
+                  Unificado
+                </button>
+                <button
+                  class="bt-btn"
+                  data-vmed-mode="sep"
+                  onclick="setVentasMedMode('sep')"
+                >
+                  Separado
+                </button>
+              </div>
+              <div class="legend" id="vmedLegend" style="display: none">
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #2e86de"></div>
+                  Seguro
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #f39c12"></div>
+                  Particular
+                </div>
               </div>
             </div>
           </div>
@@ -224,7 +252,7 @@
                 <tr>
                   <th>Médico</th>
                   <th class="r">Recet.</th>
-                  <th class="r">Unds.</th>
+                  <th class="r">% Conv.</th>
                   <th class="r">Ticket prom.</th>
                   <th class="r">Total</th>
                 </tr>

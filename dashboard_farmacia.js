@@ -25,6 +25,10 @@ let _recetasData = null;
 let convChartMode = "uni"; // "uni" | "aten"
 let _convData = null;
 
+// ── Estado toggle ventas chart ───────────────────────────────
+let ventasMedMode = "uni"; // "uni" | "sep"
+let _ventasMedData = null;
+
 // ─────────────────────────────────────────────────────────
 // CACHÉ EN localStorage
 // ─────────────────────────────────────────────────────────
@@ -207,6 +211,19 @@ function showEmptyState() {
   if (convSub)
     convSub.textContent =
       "Unidades recetadas (derivadas) y vendidas (convertidas)";
+
+  // —— Reset toggle ventas chart
+  ventasMedMode = "uni";
+  _ventasMedData = null;
+  document.querySelectorAll("[data-vmed-mode]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.vmedMode === "uni");
+  });
+  const vmedLegend = document.getElementById("vmedLegend");
+  if (vmedLegend) vmedLegend.style.display = "none";
+  const vmedSub = document.getElementById("ventasMedSubtitle");
+  if (vmedSub)
+    vmedSub.textContent =
+      "Total venta realizada (S/) — exluye médicos sin conversiones";
 
   // —— Barra superior de estado
   setStatus(
@@ -643,25 +660,74 @@ function renderRankingTable(data) {
 
 // VENTAS MED CHART
 function renderVentasMedChart(data) {
+  _ventasMedData = data;
   destroyChart("ventasMedChart");
-  const ventasColors = data.map(
-    (_, i) =>
-      `rgb(${Math.round(30 + i * 8)},${Math.round(106 + i * 3)},${Math.round(255 - (i / data.length) * 130)})`,
-  );
+
   const ctx = document.getElementById("ventasMedChart").getContext("2d");
+  const labels = [...data].reverse().map((d) => d.abr);
+  let datasets;
+
+  if (ventasMedMode === "sep") {
+    datasets = [
+      {
+        label: "Seguro (S/)",
+        data: [...data].reverse().map((d) => d.ventasSeg),
+        backgroundColor: "#2e86de",
+        borderRadius: 4,
+        borderSkipped: false,
+      },
+      {
+        label: "Particular (S/)",
+        data: [...data].reverse().map((d) => d.ventasPar),
+        backgroundColor: "#f39c12",
+        borderRadius: 4,
+        borderSkipped: false,
+      },
+    ];
+  } else {
+    const ventasColors = data.map(
+      (_, i) =>
+        `rgb(${Math.round(30 + i * 8)},${Math.round(106 + i * 3)},${Math.round(255 - (i / data.length) * 130)})`,
+    );
+    datasets = [
+      {
+        label: "Ventas (S/)",
+        data: [...data].reverse().map((d) => d.ventas),
+        backgroundColor: [...ventasColors].reverse(),
+        borderRadius: 4,
+        borderSkipped: false,
+      },
+    ];
+  }
+
+  const tooltipCallbacks = {
+    title: (items) => {
+      const idx = data.length - 1 - items[0].dataIndex;
+      return data[idx].medico;
+    },
+    afterBody: (items) => {
+      const idx = data.length - 1 - items[0].dataIndex;
+      const d = data[idx];
+      return [
+        `Recetas: ${d.recetas}`,
+        `Unds.: ${d.unidades}`,
+        `Ticket prom.: S/ ${d.ticket.toFixed(2)}`,
+        ...(ventasMedMode === "sep"
+          ? [
+              `Total: S/ ${d.ventas.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`,
+            ]
+          : []),
+      ];
+    },
+    label: (item) =>
+      ` S/ ${item.raw.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`,
+  };
+
   charts["ventasMedChart"] = new Chart(ctx, {
     type: "bar",
     data: {
-      labels: [...data].reverse().map((d) => d.abr),
-      datasets: [
-        {
-          label: "Ventas (S/)",
-          data: [...data].reverse().map((d) => d.ventas),
-          backgroundColor: [...ventasColors].reverse(),
-          borderRadius: 4,
-          borderSkipped: false,
-        },
-      ],
+      labels,
+      datasets,
     },
     options: {
       indexAxis: "y",
@@ -669,28 +735,11 @@ function renderVentasMedChart(data) {
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: {
-          callbacks: {
-            title: (items) => {
-              const idx = data.length - 1 - items[0].dataIndex;
-              return data[idx].medico;
-            },
-            afterBody: (items) => {
-              const idx = data.length - 1 - items[0].dataIndex;
-              const d = data[idx];
-              return [
-                `Recetas: ${d.recetas}`,
-                `Unds.: ${d.unidades}`,
-                `Ticket prom.: S/ ${d.ticket.toFixed(2)}`,
-              ];
-            },
-            label: (item) =>
-              ` S/ ${item.raw.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`,
-          },
-        },
+        tooltip: { callbacks: tooltipCallbacks },
       },
       scales: {
         x: {
+          stacked: ventasMedMode === "sep",
           beginAtZero: true,
           grid: { color: "#f0f2f5" },
           ticks: {
@@ -700,12 +749,29 @@ function renderVentasMedChart(data) {
           },
         },
         y: {
+          stacked: ventasMedMode === "sep",
           grid: { display: false },
           ticks: { font: { size: 11 }, color: "#374151" },
         },
       },
     },
   });
+}
+
+function setVentasMedMode(mode) {
+  ventasMedMode = mode;
+  document.querySelectorAll("[data-vmed-mode]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.vmedMode === mode);
+  });
+  const legend = document.getElementById("vmedLegend");
+  if (legend) legend.style.display = mode === "sep" ? "" : "none";
+  const sub = document.getElementById("ventasMedSubtitle");
+  if (sub)
+    sub.textContent =
+      mode === "sep"
+        ? "Agrupado por tipo de atención"
+        : "Total venta realizada (S/) — exluye médicos sin conversiones";
+  if (_ventasMedData) renderVentasMedChart(_ventasMedData);
 }
 
 // VENTAS BODY TABLE
@@ -718,7 +784,7 @@ function renderVentasBody(data) {
       <td><span class="rank-num ${isTop ? "top" : ""}">${i + 1}</span>
           <span style="font-size:.78rem;font-weight:600;">${d.medico.split(" ").slice(0, 2).join(" ")}</span></td>
       <td class="r" style="font-size:.78rem;">${d.recetas}</td>
-      <td class="r" style="font-size:.78rem;">${d.unidades}</td>
+      <td class="r" style="font-size:.78rem;">${(d.convPct || 0).toFixed(1)}%</td>
       <td class="r"><span class="ticket-val">S/ ${d.ticket.toFixed(2)}</span></td>
       <td class="r" style="font-weight:700;color:#1a2035;">S/ ${d.ventas.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</td>
     </tr>`;
@@ -1534,6 +1600,7 @@ function buildDataFromWorkbook(wb, fileName) {
   const ventMap = {};
   norm.forEach((r) => {
     const med = getMed(r);
+    const tipo = getTipo(r);
     const v = num(get(r, "tot_conversion"));
     if (v <= 0) return;
     if (!ventMap[med])
@@ -1541,10 +1608,14 @@ function buildDataFromWorkbook(wb, fileName) {
         medico: med,
         abr: med.split(" ")[0],
         ventas: 0,
+        ventasSeg: 0,
+        ventasPar: 0,
         unidades: 0,
         recetas: 0,
       };
     ventMap[med].ventas += v;
+    if (tipo.includes("SEG")) ventMap[med].ventasSeg += v;
+    else ventMap[med].ventasPar += v;
     ventMap[med].unidades += num(get(r, "can_conversion"));
   });
   // recetas de venta (solo las que tuvieron conversión real)
@@ -1588,10 +1659,16 @@ function buildDataFromWorkbook(wb, fileName) {
     });
   }
   const topMedVentas = Object.values(ventMap)
-    .map((d) => ({
-      ...d,
-      ticket: d.recetas > 0 ? d.ventas / d.recetas : 0,
-    }))
+    .map((d) => {
+      const medData = recetas.find((r) => r.medico === d.medico);
+      const atenciones = medData ? medData.seguro + medData.particular : 0;
+      return {
+        ...d,
+        ticket: d.recetas > 0 ? d.ventas / d.recetas : 0,
+        atenciones,
+        convPct: atenciones > 0 ? (d.recetas / atenciones) * 100 : 0,
+      };
+    })
     .filter((d) => d.ventas > 0)
     .sort((a, b) => b.ventas - a.ventas)
     .slice(0, 10);
