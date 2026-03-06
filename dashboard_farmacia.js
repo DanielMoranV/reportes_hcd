@@ -508,10 +508,19 @@ function renderProyecciones(K) {
 
   // ── Tarjeta Actual ──
   set("scActualPct", parPct.toFixed(1) + "%");
-  set("scActualUnds", `${fmtN(K.parConv)} / ${fmtN(K.parDeriv)} unds`);
+  set(
+    "scActualUnds",
+    `${fmtN(K.parConvGuia)} / ${fmtN(K.parDerivGuia)} recetas`,
+  );
   set(
     "scActualRev",
     `Ingreso potencial: S/ ${fmt(K.parRevNR)} · Ganancia: S/ ${fmt(K.parVentaNR)}`,
+  );
+
+  const ticketPromedio = K.parConvGuia > 0 ? K.parSumRev / K.parConvGuia : 0;
+  set(
+    "scActualBase",
+    `Ticket prom. vendido: S/ ${fmt(ticketPromedio)} · Línea base`,
   );
 
   // ── Escenarios ──
@@ -539,13 +548,20 @@ function renderProyecciones(K) {
     },
   ];
 
+  // Proyectar basado en el comportamiento histórico (Ticket Promedio)
+  // en lugar del valor de las recetas perdidas.
+  const ingresoPorRecetaAprox =
+    K.parConvGuia > 0 ? K.parSumRev / K.parConvGuia : 0;
+  const gananciaPorRecetaAprox =
+    K.parConvGuia > 0 ? K.parSumGan / K.parConvGuia : 0;
+
   escenarios.forEach((sc) => {
-    const nuevasConv = Math.round((K.parDeriv * sc.pct) / 100);
-    const deltaConv = Math.max(0, nuevasConv - K.parConv);
-    const ingresoAdd = deltaConv * precioPorUnd;
-    const gananciaAdd = deltaConv * margenNetoPorUnd;
+    const nuevasConvRecetas = Math.round((K.parDerivGuia * sc.pct) / 100);
+    const deltaRecetas = Math.max(0, nuevasConvRecetas - K.parConvGuia);
+    const ingresoAdd = deltaRecetas * ingresoPorRecetaAprox;
+    const gananciaAdd = deltaRecetas * gananciaPorRecetaAprox;
     set(sc.elPct, sc.pct + "%");
-    set(sc.elUnds, "+" + fmtN(deltaConv) + " unds. más");
+    set(sc.elUnds, "+" + fmtN(deltaRecetas) + " recetas más");
     set(
       sc.elRev,
       "+ S/ " + fmtN(Math.round(ingresoAdd)) + " en ingreso adicional",
@@ -1905,6 +1921,7 @@ function buildDataFromWorkbook(wb, fileName) {
     segVentaNR = 0;
   // Precio ponderado PAR: Σ(tot_conversion PAR) / Σ(can_conversion PAR)
   let parSumRev = 0,
+    parSumGan = 0,
     parSumConv = 0;
 
   norm.forEach((r) => {
@@ -1935,6 +1952,7 @@ function buildDataFromWorkbook(wb, fileName) {
       // precio ponderado PAR (solo unidades convertidas como referencia)
       if (conv > 0) {
         parSumRev += totC;
+        parSumGan += totC - coC;
         parSumConv += conv;
       }
     }
@@ -2013,6 +2031,8 @@ function buildDataFromWorkbook(wb, fileName) {
     segConvGuia: guiaCol && admCol ? segConvGuia : segConv,
     parDerivGuia: guiaCol && admCol ? parDerivGuia : parDeriv,
     parConvGuia: guiaCol && admCol ? parConvGuia : parConv,
+    parSumRev, // Ingreso total de recetas particulares convertidas
+    parSumGan, // Ganancia total de recetas particulares convertidas
   };
 
   // ── ESTRATEGIAS: calcular datos clave ────────────────────

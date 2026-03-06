@@ -864,410 +864,454 @@
       <!-- ═══════════════════════════════════════════════════════════════════ -->
       <!-- SECCIÓN: PROYECCIONES Y ESTRATEGIAS                                -->
       <!-- ═══════════════════════════════════════════════════════════════════ -->
-
-      <div class="section-divider">
-        <div class="sdot"></div>
-        <h3>
-          Proyecciones y Estrategias &mdash; Mejora de Conversión Particular
-        </h3>
-      </div>
-
-      <!-- Alerta de contexto -->
-
-      <!-- OCULTO TEMPORALMENTE - quitar display:none para mostrar -->
       <div style="display: none">
-        <div class="strat-alert">
-          <div class="strat-alert-icon">⚠</div>
-          <div id="stratAlertText">
-            <strong>Brecha crítica de conversión:</strong> Los pacientes
-            Particulares convierten solo el
-            <strong id="parConvPct">5.9%</strong> de sus recetas frente al
-            <strong id="segConvPct">74.4%</strong> en Seguros. De las
-            <span id="parSinConvTotal">2,053</span> unds. no vendidas,
-            <strong id="stockAlertText"
-              >749 (36.5%) no se convirtieron por falta de stock</strong
+        <div class="section-divider">
+          <div class="sdot"></div>
+          <h3>
+            Proyecciones y Estrategias &mdash; Mejora de Conversión Particular
+          </h3>
+        </div>
+
+        <!-- Alerta de contexto -->
+
+        <!-- OCULTO TEMPORALMENTE - quitar display:none para mostrar -->
+        <div style="display: none">
+          <div class="strat-alert">
+            <div class="strat-alert-icon">⚠</div>
+            <div id="stratAlertText">
+              <strong>Brecha crítica de conversión:</strong> Los pacientes
+              Particulares convierten solo el
+              <strong id="parConvPct">5.9%</strong> de sus recetas frente al
+              <strong id="segConvPct">74.4%</strong> en Seguros. De las
+              <span id="parSinConvTotal">2,053</span> unds. no vendidas,
+              <strong id="stockAlertText"
+                >749 (36.5%) no se convirtieron por falta de stock</strong
+              >
+              — recuperables sin descuentos ni estrategias de precio. Las
+              <span id="parActivaText">1,304</span> unds. restantes requieren
+              acciones activas de conversión.
+            </div>
+          </div>
+        </div>
+
+        <!-- Escenarios de mejora -->
+        <p class="sc-legend">
+          Escenarios de conversión &mdash; solo recetas Particular
+          <i
+            class="fi tip-down"
+            data-f="Meta% × Derivadas PAR = Nuevas conv. proyectadas · Δ = máx(0, Nuevas − Conv. actuales) · Ingreso adicional = Δ × (Ingreso no realizado ÷ Uds. sin convertir) · Ganancia adicional = Δ × (Margen no realizado ÷ Uds. sin convertir)"
+            >i</i
+          >
+        </p>
+        <div class="scenario-grid">
+          <div class="sc-card sc-actual">
+            <div class="sc-label">Estado Actual</div>
+            <div class="sc-pct actual-pct" id="scActualPct">5.9%</div>
+            <div class="sc-units" id="scActualUnds">128 / 2,181 unds</div>
+            <div class="sc-rev" id="scActualRev">
+              Ingreso potencial: S/ 120,400 · Ganancia: 48,000
+            </div>
+            <div class="sc-base" id="scActualBase">Línea base</div>
+          </div>
+          <div class="sc-card sc-conservador">
+            <div class="sc-label">Escenario Conservador</div>
+            <div class="sc-pct" id="scConsPct">15%</div>
+            <div class="sc-units" id="scConsUnds">+199 unds. más</div>
+            <div class="sc-revenue" id="scConsRev">
+              +S/ 4,408 en ingreso adicional
+            </div>
+            <span class="sc-gain blue" id="scConsGain"
+              >+S/ 886 ganancia neta</span
             >
-            — recuperables sin descuentos ni estrategias de precio. Las
-            <span id="parActivaText">1,304</span> unds. restantes requieren
-            acciones activas de conversión.
+          </div>
+          <div class="sc-card sc-moderado">
+            <div class="sc-label">Escenario Moderado</div>
+            <div class="sc-pct" id="scModPct">25%</div>
+            <div class="sc-units" id="scModUnds">+417 unds. más</div>
+            <div class="sc-revenue" id="scModRev">
+              +S/ 9,237 en ingreso adicional
+            </div>
+            <span class="sc-gain teal" id="scModGain"
+              >+S/ 1,856 ganancia neta</span
+            >
+          </div>
+          <div class="sc-card sc-optimista">
+            <div class="sc-label">Escenario Optimista</div>
+            <div class="sc-pct" id="scOptPct">40%</div>
+            <div class="sc-units" id="scOptUnds">+744 unds. más</div>
+            <div class="sc-revenue" id="scOptRev">
+              +S/ 16,480 en ingreso adicional
+            </div>
+            <span class="sc-gain green" id="scOptGain"
+              >+S/ 3,312 ganancia neta</span
+            >
           </div>
         </div>
-      </div>
 
-      <!-- Escenarios de mejora -->
-      <p class="sc-legend">
-        Escenarios de conversión &mdash; solo recetas Particular
-        <i
-          class="fi tip-down"
-          data-f="Meta% × Derivadas PAR = Nuevas conv. proyectadas · Δ = máx(0, Nuevas − Conv. actuales) · Ingreso adicional = Δ × (Ingreso no realizado ÷ Uds. sin convertir) · Ganancia adicional = Δ × (Margen no realizado ÷ Uds. sin convertir)"
-          >i</i
-        >
-      </p>
-      <div class="scenario-grid">
-        <div class="sc-card sc-actual">
-          <div class="sc-label">Estado Actual</div>
-          <div class="sc-pct actual-pct" id="scActualPct">5.9%</div>
-          <div class="sc-units" id="scActualUnds">128 / 2,181 unds</div>
-          <div class="sc-revenue" id="scActualRev">
-            Potencial no realizado: S/ 4,236.46
+        <!-- Insights clave -->
+        <div class="insight-row" id="insightRow">
+          <div class="insight-card ins-red">
+            <div class="insight-icon">📦</div>
+            <div>
+              <div class="insight-title">
+                749 unidades no vendidas por falta de stock — S/ 9,101
+                recuperables
+              </div>
+              <div class="insight-desc">
+                El 36.5% del potencial no realizado particular se debe a
+                <code>sto_med = 0</code> al momento de la atención. Resolver el
+                quiebre de stock es la palanca de mayor impacto sin necesidad de
+                modificar precios ni márgenes.
+              </div>
+            </div>
           </div>
-          <span class="sc-gain red">Línea base</span>
-        </div>
-        <div class="sc-card sc-conservador">
-          <div class="sc-label">Escenario Conservador</div>
-          <div class="sc-pct" id="scConsPct">15%</div>
-          <div class="sc-units" id="scConsUnds">+199 unds. más</div>
-          <div class="sc-revenue" id="scConsRev">
-            +S/ 4,408 en ingreso adicional
+          <div class="insight-card ins-amber">
+            <div class="insight-icon">📊</div>
+            <div>
+              <div class="insight-title">
+                Solo 16 productos pueden absorber descuentos — el 67% tiene
+                margen &lt;20%
+              </div>
+              <div class="insight-desc">
+                El margen promedio de los productos no convertidos es de apenas
+                20.1% (S/ 4.45/ud). Los descuentos son viables únicamente en los
+                16 productos con margen ≥ 30%, donde incluso con 20% de
+                descuento se mantiene rentabilidad positiva.
+              </div>
+            </div>
           </div>
-          <span class="sc-gain blue" id="scConsGain"
-            >+S/ 886 ganancia neta</span
-          >
-        </div>
-        <div class="sc-card sc-moderado">
-          <div class="sc-label">Escenario Moderado</div>
-          <div class="sc-pct" id="scModPct">25%</div>
-          <div class="sc-units" id="scModUnds">+417 unds. más</div>
-          <div class="sc-revenue" id="scModRev">
-            +S/ 9,237 en ingreso adicional
+          <div class="insight-card ins-teal">
+            <div class="insight-icon">👩‍⚕️</div>
+            <div>
+              <div class="insight-title">
+                SILVA MARROQUIN convierte al 14.6% — modelo a replicar en
+                Pediatría
+              </div>
+              <div class="insight-desc">
+                La Dra. Silva (Pediatría) triplica la tasa promedio particular.
+                AYALA ROSALES y LEIVA HERRADA (misma especialidad) muestran
+                23.1% y 45.8% respectivamente. Identificar y replicar sus
+                prácticas hacia ALVARADO (2.5%, mayor masa) y GUERRERO AMAYA
+                (0%, 326 uds) puede tener alto impacto.
+              </div>
+            </div>
           </div>
-          <span class="sc-gain teal" id="scModGain"
-            >+S/ 1,856 ganancia neta</span
-          >
         </div>
-        <div class="sc-card sc-optimista">
-          <div class="sc-label">Escenario Optimista</div>
-          <div class="sc-pct" id="scOptPct">40%</div>
-          <div class="sc-units" id="scOptUnds">+744 unds. más</div>
-          <div class="sc-revenue" id="scOptRev">
-            +S/ 16,480 en ingreso adicional
-          </div>
-          <span class="sc-gain green" id="scOptGain"
-            >+S/ 3,312 ganancia neta</span
-          >
-        </div>
-      </div>
 
-      <!-- Insights clave -->
-      <div class="insight-row" id="insightRow">
-        <div class="insight-card ins-red">
-          <div class="insight-icon">📦</div>
-          <div>
-            <div class="insight-title">
-              749 unidades no vendidas por falta de stock — S/ 9,101
-              recuperables
-            </div>
-            <div class="insight-desc">
-              El 36.5% del potencial no realizado particular se debe a
-              <code>sto_med = 0</code> al momento de la atención. Resolver el
-              quiebre de stock es la palanca de mayor impacto sin necesidad de
-              modificar precios ni márgenes.
+        <!-- Tabla: candidatos a descuento -->
+        <div class="card" style="margin-bottom: var(--gap-lg)">
+          <div class="card-header">
+            <div>
+              <h2>Candidatos a Descuento Selectivo &mdash; Particular</h2>
+              <div class="subtitle">
+                Productos con margen &ge; 30% que mantienen rentabilidad
+                positiva incluso con 20% de descuento &middot; Simulación de
+                ganancia neta por escenario
+              </div>
             </div>
           </div>
-        </div>
-        <div class="insight-card ins-amber">
-          <div class="insight-icon">📊</div>
-          <div>
-            <div class="insight-title">
-              Solo 16 productos pueden absorber descuentos — el 67% tiene margen
-              &lt;20%
-            </div>
-            <div class="insight-desc">
-              El margen promedio de los productos no convertidos es de apenas
-              20.1% (S/ 4.45/ud). Los descuentos son viables únicamente en los
-              16 productos con margen ≥ 30%, donde incluso con 20% de descuento
-              se mantiene rentabilidad positiva.
-            </div>
+          <div class="card-body" style="padding: 0">
+            <table class="desc-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th class="r">Unds. sin vender</th>
+                  <th class="r">Margen actual</th>
+                  <th class="r">Sin descuento</th>
+                  <th class="r">Con &minus;10%</th>
+                </tr>
+              </thead>
+              <tbody id="descuentoBody">
+                <tr>
+                  <td>Nifedipino 30 mg Cap</td>
+                  <td class="r">90</td>
+                  <td class="r">
+                    <span class="margen-badge alto">49.8%</span>
+                  </td>
+                  <td class="r">S/ 111.60</td>
+                  <td class="r"><span class="desc-val">S/ 89.19</span></td>
+                  <td class="r"><span class="desc-val">S/ 77.99</span></td>
+                  <td class="r"><span class="desc-val best">S/ 66.78</span></td>
+                </tr>
+                <tr>
+                  <td>Deblax D3 100000UI</td>
+                  <td class="r">4</td>
+                  <td class="r">
+                    <span class="margen-badge medio">33.3%</span>
+                  </td>
+                  <td class="r">S/ 90.40</td>
+                  <td class="r"><span class="desc-val">S/ 63.28</span></td>
+                  <td class="r"><span class="desc-val">S/ 49.72</span></td>
+                  <td class="r"><span class="desc-val best">S/ 36.16</span></td>
+                </tr>
+                <tr>
+                  <td>Calcibone D3 800 UI Tab</td>
+                  <td class="r">90</td>
+                  <td class="r">
+                    <span class="margen-badge medio">33.2%</span>
+                  </td>
+                  <td class="r">S/ 69.30</td>
+                  <td class="r"><span class="desc-val">S/ 48.42</span></td>
+                  <td class="r"><span class="desc-val">S/ 37.98</span></td>
+                  <td class="r"><span class="desc-val best">S/ 27.54</span></td>
+                </tr>
+                <tr>
+                  <td>Maltofer 100mg Tab Mast</td>
+                  <td class="r">60</td>
+                  <td class="r">
+                    <span class="margen-badge medio">33.2%</span>
+                  </td>
+                  <td class="r">S/ 46.80</td>
+                  <td class="r"><span class="desc-val">S/ 32.70</span></td>
+                  <td class="r"><span class="desc-val">S/ 25.65</span></td>
+                  <td class="r"><span class="desc-val best">S/ 18.60</span></td>
+                </tr>
+                <tr>
+                  <td>Concor 2.5mg Comp</td>
+                  <td class="r">30</td>
+                  <td class="r">
+                    <span class="margen-badge medio">33.4%</span>
+                  </td>
+                  <td class="r">S/ 41.40</td>
+                  <td class="r"><span class="desc-val">S/ 29.01</span></td>
+                  <td class="r"><span class="desc-val">S/ 22.81</span></td>
+                  <td class="r"><span class="desc-val best">S/ 16.62</span></td>
+                </tr>
+                <tr>
+                  <td>Irbesartan 150 mg Tab</td>
+                  <td class="r">60</td>
+                  <td class="r">
+                    <span class="margen-badge alto">50.4%</span>
+                  </td>
+                  <td class="r">S/ 37.20</td>
+                  <td class="r"><span class="desc-val">S/ 29.82</span></td>
+                  <td class="r"><span class="desc-val">S/ 26.13</span></td>
+                  <td class="r"><span class="desc-val best">S/ 22.44</span></td>
+                </tr>
+                <tr>
+                  <td>Supracalm Flex 300mg/250mg Tab</td>
+                  <td class="r">37</td>
+                  <td class="r">
+                    <span class="margen-badge medio">33.5%</span>
+                  </td>
+                  <td class="r">S/ 29.97</td>
+                  <td class="r"><span class="desc-val">S/ 21.02</span></td>
+                  <td class="r"><span class="desc-val">S/ 16.54</span></td>
+                  <td class="r"><span class="desc-val best">S/ 12.06</span></td>
+                </tr>
+                <tr>
+                  <td>Assa 81mg Tab</td>
+                  <td class="r">60</td>
+                  <td class="r">
+                    <span class="margen-badge medio">33.3%</span>
+                  </td>
+                  <td class="r">S/ 29.40</td>
+                  <td class="r"><span class="desc-val">S/ 20.58</span></td>
+                  <td class="r"><span class="desc-val">S/ 16.17</span></td>
+                  <td class="r"><span class="desc-val best">S/ 11.76</span></td>
+                </tr>
+                <tr>
+                  <td>Espironolactona 100 mg Tab</td>
+                  <td class="r">15</td>
+                  <td class="r">
+                    <span class="margen-badge alto">50.0%</span>
+                  </td>
+                  <td class="r">S/ 24.15</td>
+                  <td class="r"><span class="desc-val">S/ 19.32</span></td>
+                  <td class="r"><span class="desc-val">S/ 16.91</span></td>
+                  <td class="r"><span class="desc-val best">S/ 14.49</span></td>
+                </tr>
+                <tr>
+                  <td>Cefuroxima 500mg Tab</td>
+                  <td class="r">14</td>
+                  <td class="r">
+                    <span class="margen-badge alto">50.2%</span>
+                  </td>
+                  <td class="r">S/ 22.26</td>
+                  <td class="r"><span class="desc-val">S/ 17.82</span></td>
+                  <td class="r"><span class="desc-val">S/ 15.60</span></td>
+                  <td class="r"><span class="desc-val best">S/ 13.38</span></td>
+                </tr>
+                <tr>
+                  <td><strong>TOTAL</strong></td>
+                  <td class="r"><strong>460</strong></td>
+                  <td class="r">&mdash;</td>
+                  <td class="r"><strong>S/ 502.48</strong></td>
+                  <td class="r"><strong>S/ 371.16</strong></td>
+                  <td class="r"><strong>S/ 305.49</strong></td>
+                  <td class="r"><strong>S/ 239.83</strong></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
-        <div class="insight-card ins-teal">
-          <div class="insight-icon">👩‍⚕️</div>
-          <div>
-            <div class="insight-title">
-              SILVA MARROQUIN convierte al 14.6% — modelo a replicar en
-              Pediatría
-            </div>
-            <div class="insight-desc">
-              La Dra. Silva (Pediatría) triplica la tasa promedio particular.
-              AYALA ROSALES y LEIVA HERRADA (misma especialidad) muestran 23.1%
-              y 45.8% respectivamente. Identificar y replicar sus prácticas
-              hacia ALVARADO (2.5%, mayor masa) y GUERRERO AMAYA (0%, 326 uds)
-              puede tener alto impacto.
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Tabla: candidatos a descuento -->
-      <div class="card" style="margin-bottom: var(--gap-lg)">
-        <div class="card-header">
-          <div>
-            <h2>Candidatos a Descuento Selectivo &mdash; Particular</h2>
-            <div class="subtitle">
-              Productos con margen &ge; 30% que mantienen rentabilidad positiva
-              incluso con 20% de descuento &middot; Simulación de ganancia neta
-              por escenario
+        <!-- Tabla: médicos prioritarios -->
+        <div class="card" style="margin-bottom: 20px">
+          <div class="card-header">
+            <div>
+              <h2>Médicos Prioritarios &mdash; Conversión Particular</h2>
+              <div class="subtitle">
+                Ordenados por potencial no realizado &middot; Benchmark: médicos
+                con mayor tasa de conversión en Particular
+              </div>
             </div>
           </div>
-        </div>
-        <div class="card-body" style="padding: 0">
-          <table class="desc-table">
-            <thead>
-              <tr>
-                <th>Producto</th>
-                <th class="r">Unds. sin vender</th>
-                <th class="r">Margen actual</th>
-                <th class="r">Sin descuento</th>
-                <th class="r">Con &minus;10%</th>
-              </tr>
-            </thead>
-            <tbody id="descuentoBody">
-              <tr>
-                <td>Nifedipino 30 mg Cap</td>
-                <td class="r">90</td>
-                <td class="r"><span class="margen-badge alto">49.8%</span></td>
-                <td class="r">S/ 111.60</td>
-                <td class="r"><span class="desc-val">S/ 89.19</span></td>
-                <td class="r"><span class="desc-val">S/ 77.99</span></td>
-                <td class="r"><span class="desc-val best">S/ 66.78</span></td>
-              </tr>
-              <tr>
-                <td>Deblax D3 100000UI</td>
-                <td class="r">4</td>
-                <td class="r"><span class="margen-badge medio">33.3%</span></td>
-                <td class="r">S/ 90.40</td>
-                <td class="r"><span class="desc-val">S/ 63.28</span></td>
-                <td class="r"><span class="desc-val">S/ 49.72</span></td>
-                <td class="r"><span class="desc-val best">S/ 36.16</span></td>
-              </tr>
-              <tr>
-                <td>Calcibone D3 800 UI Tab</td>
-                <td class="r">90</td>
-                <td class="r"><span class="margen-badge medio">33.2%</span></td>
-                <td class="r">S/ 69.30</td>
-                <td class="r"><span class="desc-val">S/ 48.42</span></td>
-                <td class="r"><span class="desc-val">S/ 37.98</span></td>
-                <td class="r"><span class="desc-val best">S/ 27.54</span></td>
-              </tr>
-              <tr>
-                <td>Maltofer 100mg Tab Mast</td>
-                <td class="r">60</td>
-                <td class="r"><span class="margen-badge medio">33.2%</span></td>
-                <td class="r">S/ 46.80</td>
-                <td class="r"><span class="desc-val">S/ 32.70</span></td>
-                <td class="r"><span class="desc-val">S/ 25.65</span></td>
-                <td class="r"><span class="desc-val best">S/ 18.60</span></td>
-              </tr>
-              <tr>
-                <td>Concor 2.5mg Comp</td>
-                <td class="r">30</td>
-                <td class="r"><span class="margen-badge medio">33.4%</span></td>
-                <td class="r">S/ 41.40</td>
-                <td class="r"><span class="desc-val">S/ 29.01</span></td>
-                <td class="r"><span class="desc-val">S/ 22.81</span></td>
-                <td class="r"><span class="desc-val best">S/ 16.62</span></td>
-              </tr>
-              <tr>
-                <td>Irbesartan 150 mg Tab</td>
-                <td class="r">60</td>
-                <td class="r"><span class="margen-badge alto">50.4%</span></td>
-                <td class="r">S/ 37.20</td>
-                <td class="r"><span class="desc-val">S/ 29.82</span></td>
-                <td class="r"><span class="desc-val">S/ 26.13</span></td>
-                <td class="r"><span class="desc-val best">S/ 22.44</span></td>
-              </tr>
-              <tr>
-                <td>Supracalm Flex 300mg/250mg Tab</td>
-                <td class="r">37</td>
-                <td class="r"><span class="margen-badge medio">33.5%</span></td>
-                <td class="r">S/ 29.97</td>
-                <td class="r"><span class="desc-val">S/ 21.02</span></td>
-                <td class="r"><span class="desc-val">S/ 16.54</span></td>
-                <td class="r"><span class="desc-val best">S/ 12.06</span></td>
-              </tr>
-              <tr>
-                <td>Assa 81mg Tab</td>
-                <td class="r">60</td>
-                <td class="r"><span class="margen-badge medio">33.3%</span></td>
-                <td class="r">S/ 29.40</td>
-                <td class="r"><span class="desc-val">S/ 20.58</span></td>
-                <td class="r"><span class="desc-val">S/ 16.17</span></td>
-                <td class="r"><span class="desc-val best">S/ 11.76</span></td>
-              </tr>
-              <tr>
-                <td>Espironolactona 100 mg Tab</td>
-                <td class="r">15</td>
-                <td class="r"><span class="margen-badge alto">50.0%</span></td>
-                <td class="r">S/ 24.15</td>
-                <td class="r"><span class="desc-val">S/ 19.32</span></td>
-                <td class="r"><span class="desc-val">S/ 16.91</span></td>
-                <td class="r"><span class="desc-val best">S/ 14.49</span></td>
-              </tr>
-              <tr>
-                <td>Cefuroxima 500mg Tab</td>
-                <td class="r">14</td>
-                <td class="r"><span class="margen-badge alto">50.2%</span></td>
-                <td class="r">S/ 22.26</td>
-                <td class="r"><span class="desc-val">S/ 17.82</span></td>
-                <td class="r"><span class="desc-val">S/ 15.60</span></td>
-                <td class="r"><span class="desc-val best">S/ 13.38</span></td>
-              </tr>
-              <tr>
-                <td><strong>TOTAL</strong></td>
-                <td class="r"><strong>460</strong></td>
-                <td class="r">&mdash;</td>
-                <td class="r"><strong>S/ 502.48</strong></td>
-                <td class="r"><strong>S/ 371.16</strong></td>
-                <td class="r"><strong>S/ 305.49</strong></td>
-                <td class="r"><strong>S/ 239.83</strong></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Tabla: médicos prioritarios -->
-      <div class="card" style="margin-bottom: 20px">
-        <div class="card-header">
-          <div>
-            <h2>Médicos Prioritarios &mdash; Conversión Particular</h2>
-            <div class="subtitle">
-              Ordenados por potencial no realizado &middot; Benchmark: médicos
-              con mayor tasa de conversión en Particular
-            </div>
+          <div class="card-body" style="padding: 0">
+            <table class="medprio-table">
+              <thead>
+                <tr>
+                  <th>Médico</th>
+                  <th>Especialidad</th>
+                  <th class="r">Derivadas Part.</th>
+                  <th class="r">Sin convertir</th>
+                  <th class="r">Tasa conv.</th>
+                  <th class="r">Pot. no realizado</th>
+                </tr>
+              </thead>
+              <tbody id="medprioBody">
+                <tr>
+                  <td>Alvarado Guerrero Alembert</td>
+                  <td>Reumatología</td>
+                  <td class="r">685</td>
+                  <td class="r">668</td>
+                  <td class="r">
+                    <div
+                      class="conv-bar-wrap"
+                      style="justify-content: flex-end"
+                    >
+                      <div class="conv-bar low" style="width: 3px"></div>
+                      <span class="conv-pct low">2.5%</span>
+                    </div>
+                  </td>
+                  <td class="r"><strong>S/ 1,554.58</strong></td>
+                </tr>
+                <tr>
+                  <td>
+                    Silva Marroquin Martha<span class="benchmark-tag"
+                      >Benchmark</span
+                    >
+                  </td>
+                  <td>Pediatría</td>
+                  <td class="r">321</td>
+                  <td class="r">274</td>
+                  <td class="r">
+                    <div
+                      class="conv-bar-wrap"
+                      style="justify-content: flex-end"
+                    >
+                      <div class="conv-bar mid" style="width: 21px"></div>
+                      <span class="conv-pct mid">14.6%</span>
+                    </div>
+                  </td>
+                  <td class="r">S/ 725.38</td>
+                </tr>
+                <tr>
+                  <td>Guerrero Amaya Eduardo</td>
+                  <td>Ginecología y Obstetricia</td>
+                  <td class="r">326</td>
+                  <td class="r">326</td>
+                  <td class="r">
+                    <div
+                      class="conv-bar-wrap"
+                      style="justify-content: flex-end"
+                    >
+                      <div class="conv-bar low" style="width: 4px"></div>
+                      <span class="conv-pct low">0.0%</span>
+                    </div>
+                  </td>
+                  <td class="r">S/ 703.72</td>
+                </tr>
+                <tr>
+                  <td>
+                    Leiva Herrada Clever Humberto<span class="model-tag"
+                      >Mayor tasa</span
+                    >
+                  </td>
+                  <td>Pediatría</td>
+                  <td class="r">107</td>
+                  <td class="r">58</td>
+                  <td class="r">
+                    <div
+                      class="conv-bar-wrap"
+                      style="justify-content: flex-end"
+                    >
+                      <div class="conv-bar high" style="width: 66px"></div>
+                      <span class="conv-pct high">45.8%</span>
+                    </div>
+                  </td>
+                  <td class="r">S/ 336.94</td>
+                </tr>
+                <tr>
+                  <td>Yañez Cesti Mariano Manuel</td>
+                  <td>Cardiología</td>
+                  <td class="r">386</td>
+                  <td class="r">386</td>
+                  <td class="r">
+                    <div
+                      class="conv-bar-wrap"
+                      style="justify-content: flex-end"
+                    >
+                      <div class="conv-bar low" style="width: 4px"></div>
+                      <span class="conv-pct low">0.0%</span>
+                    </div>
+                  </td>
+                  <td class="r">S/ 311.69</td>
+                </tr>
+                <tr>
+                  <td>Ayala Rosales Manuel Alexander</td>
+                  <td>Pediatría</td>
+                  <td class="r">65</td>
+                  <td class="r">50</td>
+                  <td class="r">
+                    <div
+                      class="conv-bar-wrap"
+                      style="justify-content: flex-end"
+                    >
+                      <div class="conv-bar mid" style="width: 33px"></div>
+                      <span class="conv-pct mid">23.1%</span>
+                    </div>
+                  </td>
+                  <td class="r">S/ 233.01</td>
+                </tr>
+                <tr>
+                  <td>Alarcon Canova Steven</td>
+                  <td>Gastroenterología</td>
+                  <td class="r">91</td>
+                  <td class="r">91</td>
+                  <td class="r">
+                    <div
+                      class="conv-bar-wrap"
+                      style="justify-content: flex-end"
+                    >
+                      <div class="conv-bar low" style="width: 4px"></div>
+                      <span class="conv-pct low">0.0%</span>
+                    </div>
+                  </td>
+                  <td class="r">S/ 117.39</td>
+                </tr>
+                <tr>
+                  <td>Ramos Rodriguez Ingrid Joyce</td>
+                  <td>Medicina Interna</td>
+                  <td class="r">121</td>
+                  <td class="r">121</td>
+                  <td class="r">
+                    <div
+                      class="conv-bar-wrap"
+                      style="justify-content: flex-end"
+                    >
+                      <div class="conv-bar low" style="width: 4px"></div>
+                      <span class="conv-pct low">0.0%</span>
+                    </div>
+                  </td>
+                  <td class="r">S/ 109.69</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-        </div>
-        <div class="card-body" style="padding: 0">
-          <table class="medprio-table">
-            <thead>
-              <tr>
-                <th>Médico</th>
-                <th>Especialidad</th>
-                <th class="r">Derivadas Part.</th>
-                <th class="r">Sin convertir</th>
-                <th class="r">Tasa conv.</th>
-                <th class="r">Pot. no realizado</th>
-              </tr>
-            </thead>
-            <tbody id="medprioBody">
-              <tr>
-                <td>Alvarado Guerrero Alembert</td>
-                <td>Reumatología</td>
-                <td class="r">685</td>
-                <td class="r">668</td>
-                <td class="r">
-                  <div class="conv-bar-wrap" style="justify-content: flex-end">
-                    <div class="conv-bar low" style="width: 3px"></div>
-                    <span class="conv-pct low">2.5%</span>
-                  </div>
-                </td>
-                <td class="r"><strong>S/ 1,554.58</strong></td>
-              </tr>
-              <tr>
-                <td>
-                  Silva Marroquin Martha<span class="benchmark-tag"
-                    >Benchmark</span
-                  >
-                </td>
-                <td>Pediatría</td>
-                <td class="r">321</td>
-                <td class="r">274</td>
-                <td class="r">
-                  <div class="conv-bar-wrap" style="justify-content: flex-end">
-                    <div class="conv-bar mid" style="width: 21px"></div>
-                    <span class="conv-pct mid">14.6%</span>
-                  </div>
-                </td>
-                <td class="r">S/ 725.38</td>
-              </tr>
-              <tr>
-                <td>Guerrero Amaya Eduardo</td>
-                <td>Ginecología y Obstetricia</td>
-                <td class="r">326</td>
-                <td class="r">326</td>
-                <td class="r">
-                  <div class="conv-bar-wrap" style="justify-content: flex-end">
-                    <div class="conv-bar low" style="width: 4px"></div>
-                    <span class="conv-pct low">0.0%</span>
-                  </div>
-                </td>
-                <td class="r">S/ 703.72</td>
-              </tr>
-              <tr>
-                <td>
-                  Leiva Herrada Clever Humberto<span class="model-tag"
-                    >Mayor tasa</span
-                  >
-                </td>
-                <td>Pediatría</td>
-                <td class="r">107</td>
-                <td class="r">58</td>
-                <td class="r">
-                  <div class="conv-bar-wrap" style="justify-content: flex-end">
-                    <div class="conv-bar high" style="width: 66px"></div>
-                    <span class="conv-pct high">45.8%</span>
-                  </div>
-                </td>
-                <td class="r">S/ 336.94</td>
-              </tr>
-              <tr>
-                <td>Yañez Cesti Mariano Manuel</td>
-                <td>Cardiología</td>
-                <td class="r">386</td>
-                <td class="r">386</td>
-                <td class="r">
-                  <div class="conv-bar-wrap" style="justify-content: flex-end">
-                    <div class="conv-bar low" style="width: 4px"></div>
-                    <span class="conv-pct low">0.0%</span>
-                  </div>
-                </td>
-                <td class="r">S/ 311.69</td>
-              </tr>
-              <tr>
-                <td>Ayala Rosales Manuel Alexander</td>
-                <td>Pediatría</td>
-                <td class="r">65</td>
-                <td class="r">50</td>
-                <td class="r">
-                  <div class="conv-bar-wrap" style="justify-content: flex-end">
-                    <div class="conv-bar mid" style="width: 33px"></div>
-                    <span class="conv-pct mid">23.1%</span>
-                  </div>
-                </td>
-                <td class="r">S/ 233.01</td>
-              </tr>
-              <tr>
-                <td>Alarcon Canova Steven</td>
-                <td>Gastroenterología</td>
-                <td class="r">91</td>
-                <td class="r">91</td>
-                <td class="r">
-                  <div class="conv-bar-wrap" style="justify-content: flex-end">
-                    <div class="conv-bar low" style="width: 4px"></div>
-                    <span class="conv-pct low">0.0%</span>
-                  </div>
-                </td>
-                <td class="r">S/ 117.39</td>
-              </tr>
-              <tr>
-                <td>Ramos Rodriguez Ingrid Joyce</td>
-                <td>Medicina Interna</td>
-                <td class="r">121</td>
-                <td class="r">121</td>
-                <td class="r">
-                  <div class="conv-bar-wrap" style="justify-content: flex-end">
-                    <div class="conv-bar low" style="width: 4px"></div>
-                    <span class="conv-pct low">0.0%</span>
-                  </div>
-                </td>
-                <td class="r">S/ 109.69</td>
-              </tr>
-            </tbody>
-          </table>
         </div>
       </div>
     </div>
-
     <div class="footer" id="footerBar">
       Datos al 28/02/2026 &nbsp;|&nbsp; Fuente: data07-02_farmacia.xls
       &nbsp;|&nbsp; HCD
