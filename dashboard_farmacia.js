@@ -22,7 +22,7 @@ let barChartMode = "sep"; // "sep" | "uni"
 let _recetasData = null;
 
 // ── Estado toggle conv chart ───────────────────────────────
-let convChartMode = "uni"; // "uni" | "aten"
+let convChartMode = "aten"; // "uni" | "aten"
 let _convData = null;
 
 // ── Estado toggle ventas chart ───────────────────────────────
@@ -213,10 +213,10 @@ function showEmptyState() {
   if (barSub) barSub.textContent = "Agrupado por tipo de atención";
 
   // —— Reset toggle conv chart
-  convChartMode = "uni";
+  convChartMode = "aten";
   _convData = null;
   document.querySelectorAll("[data-conv-mode]").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.convMode === "uni");
+    btn.classList.toggle("active", btn.dataset.convMode === "aten");
   });
   const convSub = document.getElementById("convSubtitle");
   if (convSub)
@@ -1247,10 +1247,12 @@ function renderLossBody(data) {
   [...data]
     .sort((a, b) => b.ganPerd - a.ganPerd)
     .forEach((d) => {
-      const cls = d.pct >= 60 ? "high" : d.pct >= 35 ? "mid" : "low";
+      const pctConv = d.pctRec !== undefined ? d.pctRec : d.pct;
+      const pctNoConv = parseFloat((100 - pctConv).toFixed(1));
+      const cls = pctNoConv >= 65 ? "low" : pctNoConv >= 35 ? "mid" : "high";
       tbody.innerHTML += `<tr>
       <td style="font-size:.78rem;font-weight:600;">${d.medico.split(" ").slice(0, 2).join(" ")}</td>
-      <td class="r"><span class="pct-badge ${cls}">${d.pct}%</span></td>
+      <td class="r"><span class="pct-badge ${cls}">${pctNoConv}%</span></td>
       <td class="r"><span class="loss-amount">S/ ${d.ganPerd.toFixed(2)}</span></td>
     </tr>`;
     });
@@ -1692,19 +1694,20 @@ function buildDataFromWorkbook(wb, fileName) {
     })
     .sort((a, b) => b.deriv - a.deriv);
 
-  // Enriquecer convData con recetas únicas por médico (campo admision)
-  if (admCol) {
-    const admConvSet = {};
+  // Enriquecer convData con recetas únicas por médico (admision o guia como fallback)
+  const _recIdCol = admCol || guiaCol;
+  if (_recIdCol) {
+    const recConvSet = {};
     norm.forEach((r) => {
       const med = getMed(r);
-      const adm = String(r[admCol] || "").trim();
-      if (!adm) return;
-      const key = med + "|" + adm;
-      if (!admConvSet[key]) admConvSet[key] = { med, hasConv: false };
-      if (num(get(r, "can_conversion")) > 0) admConvSet[key].hasConv = true;
+      const id = String(r[_recIdCol] || "").trim();
+      if (!id) return;
+      const key = med + "|" + id;
+      if (!recConvSet[key]) recConvSet[key] = { med, hasConv: false };
+      if (num(get(r, "can_conversion")) > 0) recConvSet[key].hasConv = true;
     });
     const atenByMed = {};
-    Object.values(admConvSet).forEach(({ med, hasConv }) => {
+    Object.values(recConvSet).forEach(({ med, hasConv }) => {
       if (!atenByMed[med]) atenByMed[med] = { atenConv: 0, atenSinConv: 0 };
       if (hasConv) atenByMed[med].atenConv++;
       else atenByMed[med].atenSinConv++;
@@ -1715,6 +1718,13 @@ function buildDataFromWorkbook(wb, fileName) {
       d.atenSinConv = ac.atenSinConv;
     });
   }
+  // pctRec: tasa de conversión basada en recetas (fallback a pct por unidades si no hay col id)
+  convData.forEach((d) => {
+    const totalRec = d.atenConv + d.atenSinConv;
+    d.pctRec = totalRec > 0
+      ? parseFloat(((d.atenConv / totalRec) * 100).toFixed(1))
+      : d.pct;
+  });
 
   // ── CONVERSIÓN SOLO PARTICULAR POR MÉDICO ─────────────────────
   // convData incluye SEGURO + PARTICULAR; convDataPar es solo PAR

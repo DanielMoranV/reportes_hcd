@@ -253,7 +253,7 @@
                 Ticket promedio por atención
                 <i
                   class="fi tip-down"
-                  data-f="Fórmula: tot_conversion ÷ admisiones_únicas&#10;Total vendido ÷ nº recetas del médico"
+                  data-f="Fórmula: Σ tot_conversion ÷ recetas_con_venta&#10;Total vendido ÷ nº recetas convertidas del médico"
                   >i</i
                 >
               </div>
@@ -625,25 +625,25 @@
                 Derivaciones vs Conversiones por Médico
                 <i
                   class="fi tip-down"
-                  data-f="can_derivada = can_conversion + can_sinconvert&#10;Total recetado = Vendido + Sin convertir"
+                  data-f="Fórmula: Total recetas = Recetas conv. + Recetas sin conv.&#10;Una admisión = convertida si tiene al menos 1 venta (can_conversion &gt; 0)"
                   >i</i
                 >
               </h2>
               <div class="subtitle" id="convSubtitle">
-                Unidades recetadas (derivadas) y vendidas (convertidas)
+                Recetas con y sin conversión por médico
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 12px">
               <div class="bar-toggle">
                 <button
-                  class="bt-btn active"
+                  class="bt-btn"
                   data-conv-mode="uni"
                   onclick="setConvMode('uni')"
                 >
                   Unidades
                 </button>
                 <button
-                  class="bt-btn"
+                  class="bt-btn active"
                   data-conv-mode="aten"
                   onclick="setConvMode('aten')"
                 >
@@ -673,15 +673,15 @@
           <div class="card-header">
             <div>
               <h2>
-                Potencial No Realizado por Médico
+                Rentabilidad Potencial por Médico
                 <i
                   class="fi tip-down"
-                  data-f="Fórmula: tot_sinconversion − t_costo_sin_conver&#10;Precio venta no capturado − Costo del producto"
+                  data-f="Fórmula: Σ tot_sinconversion − Σ t_costo_sin_conver&#10;Ingreso no capturado − Costo del inventario no vendido"
                   >i</i
                 >
               </h2>
               <div class="subtitle">
-                Precio venta &minus; costo de unidades no convertidas
+                Calculado sobre recetas no convertidas por médico
               </div>
             </div>
           </div>
@@ -691,18 +691,18 @@
                 <tr>
                   <th>Médico</th>
                   <th class="r">
-                    Conv%
+                    % No Conv.
                     <i
                       class="fi tip-down tip-r"
-                      data-f="Fórmula: can_conversion ÷ can_derivada × 100&#10;Unidades vendidas ÷ unidades recetadas"
+                      data-f="Fórmula: recetas_sin_conv ÷ total_recetas × 100&#10;Admisiones sin ninguna venta ÷ total admisiones del médico"
                       >i</i
                     >
                   </th>
                   <th class="r">
-                    Pot. No Realizado
+                    Rentabilidad Potencial
                     <i
                       class="fi tip-down tip-r"
-                      data-f="Fórmula: tot_sinconversion − t_costo_sin_conver&#10;Precio venta no capturado − Costo del producto"
+                      data-f="Fórmula: Σ tot_sinconversion − Σ t_costo_sin_conver&#10;Ingreso no capturado − Costo del inventario no vendido"
                       >i</i
                     >
                   </th>
