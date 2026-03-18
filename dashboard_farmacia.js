@@ -253,7 +253,9 @@ function showEmptyState() {
   const munidadesLegend = document.getElementById("munidadesLegend");
   if (munidadesLegend) munidadesLegend.style.display = "none";
   const munidadesSub = document.getElementById("medsUnidadesSubtitle");
-  if (munidadesSub) munidadesSub.textContent = "Cantidad de unidades vendidas";
+  if (munidadesSub)
+    munidadesSub.textContent =
+      "Medicamentos más recetados (unidades derivadas)";
 
   // —— Barra superior de estado
   setStatus(
@@ -457,7 +459,7 @@ function renderDashboard(D) {
   renderVentasMedChart(D.topMedVentas);
   renderVentasBody(D.topMedVentas);
   renderMedsIngresoChart(D.topMedIngreso);
-  renderMedsUnidadesChart(D.topMedUnidades);
+  renderMedsUnidadesChart(D.topMedRecetas || D.topMedUnidades || []);
   renderSinStockBody(D.sinStockData.slice(0, 20));
   renderPieChart(totalSeg, totalPar);
   renderConvChart(D.convData);
@@ -941,7 +943,7 @@ function setMedsIngresoMode(mode) {
   if (_medsIngresoData) renderMedsIngresoChart(_medsIngresoData);
 }
 
-// TOP MEDS UNIDADES CHART
+// TOP MEDS RECETAS CHART
 function renderMedsUnidadesChart(data) {
   _medsUnidadesData = data;
   destroyChart("medsUnidadesChart");
@@ -952,14 +954,14 @@ function renderMedsUnidadesChart(data) {
     datasets = [
       {
         label: "Seguro",
-        data: [...data].reverse().map((p) => p.unidadesSeg),
+        data: [...data].reverse().map((p) => p.derivadaSeg),
         backgroundColor: "#2e86de",
         borderRadius: 4,
         borderSkipped: false,
       },
       {
         label: "Particular",
-        data: [...data].reverse().map((p) => p.unidadesPar),
+        data: [...data].reverse().map((p) => p.derivadaPar),
         backgroundColor: "#f39c12",
         borderRadius: 4,
         borderSkipped: false,
@@ -968,8 +970,8 @@ function renderMedsUnidadesChart(data) {
   } else {
     datasets = [
       {
-        label: "Unds.",
-        data: [...data].reverse().map((p) => p.unidades),
+        label: "Recetas",
+        data: [...data].reverse().map((p) => p.derivada),
         backgroundColor: "#8b5cf6",
         borderRadius: 4,
         borderSkipped: false,
@@ -991,14 +993,15 @@ function renderMedsUnidadesChart(data) {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: (item) => ` ${item.raw} unids.`,
+            label: (item) => ` ${item.raw} recetas`,
             afterBody: (items) => {
               const idx = data.length - 1 - items[0].dataIndex;
               const d = data[idx];
               return [
+                `Vendidas: ${d.unidades} unds.`,
                 `Ingreso: S/ ${d.ingreso.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`,
                 ...(medsUnidadesMode === "sep"
-                  ? [`Total unds.: ${d.unidades}`]
+                  ? [`Total recetas: ${d.derivada}`]
                   : []),
               ];
             },
@@ -1034,7 +1037,7 @@ function setMedsUnidadesMode(mode) {
     sub.textContent =
       mode === "sep"
         ? "Agrupado por tipo de atención"
-        : "Cantidad de unidades vendidas";
+        : "Medicamentos más recetados (unidades derivadas)";
   if (_medsUnidadesData) renderMedsUnidadesChart(_medsUnidadesData);
 }
 
@@ -1837,25 +1840,33 @@ function buildDataFromWorkbook(wb, fileName) {
         unidades: 0,
         unidadesSeg: 0,
         unidadesPar: 0,
+        derivada: 0,
+        derivadaSeg: 0,
+        derivadaPar: 0,
       };
     const ingr = num(get(r, "tot_conversion", "tot_conv"));
     const unids = num(get(r, "can_conversion", "can_conv"));
+    const deriv = num(get(r, "can_derivada", "can_der"));
     prodMap[prod].ingreso += ingr;
     prodMap[prod].unidades += unids;
+    prodMap[prod].derivada += deriv;
     if (tipo.includes("SEG")) {
       prodMap[prod].ingresoSeg += ingr;
       prodMap[prod].unidadesSeg += unids;
+      prodMap[prod].derivadaSeg += deriv;
     } else {
       prodMap[prod].ingresoPar += ingr;
       prodMap[prod].unidadesPar += unids;
+      prodMap[prod].derivadaPar += deriv;
     }
   });
   const topAllProds = Object.values(prodMap).filter((p) => p.ingreso > 0);
   const topMedIngreso = [...topAllProds]
     .sort((a, b) => b.ingreso - a.ingreso)
     .slice(0, 10);
-  const topMedUnidades = [...topAllProds]
-    .sort((a, b) => b.unidades - a.unidades)
+  const topMedRecetas = Object.values(prodMap)
+    .filter((p) => p.derivada > 0)
+    .sort((a, b) => b.derivada - a.derivada)
     .slice(0, 10);
 
   // ── TOP PRODUCTOS SIN CONVERSIÓN ──────────────────────
@@ -2183,7 +2194,7 @@ function buildDataFromWorkbook(wb, fileName) {
     recetas,
     topMedVentas,
     topMedIngreso,
-    topMedUnidades,
+    topMedRecetas,
     sinStockData,
     admisionesSinStock,
     convData,
