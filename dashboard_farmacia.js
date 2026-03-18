@@ -88,13 +88,16 @@ function showEmptyState() {
     ".kpi-card.part .value",
     ".kpi-card.conv .value",
     "#kpiUnidadesSinVender",
-    ".kpi-card.g-real .value",
-    ".kpi-card.g-perd .value",
+    "#kpiGanReal",
+    "#kpiGanPerd",
+    "#kpiTotalVentaConv",
+    "#kpiTotalVentaSinConv",
     "#kpiAtenciones",
     "#kpiMedicos",
     "#kpiRecetasConv",
     "#kpiRecetasSinConv",
     "#kpiPctRecetasConv",
+    "#kpiPctRecetasSinConv",
   ];
   kpiIds.forEach(qset);
 
@@ -104,8 +107,7 @@ function showEmptyState() {
   if (parLabel) parLabel.textContent = "Particular";
   qset(".kpi-card.conv .value");
   set("kpiUnidadesSinVender", "—");
-  qset(".kpi-card.g-real .value");
-  qset(".kpi-card.g-perd .value");
+  qset("#kpiGanReal");
 
   // —— KPIs sin stock
   qset(".kpi-card.stk-prod .value");
@@ -343,15 +345,18 @@ function renderDashboard(D) {
 
   // ── KPIs conversión ─────────────────────────────────────
   const K = D.kpi;
-  document.querySelector(".kpi-card.conv .value").textContent =
-    K.tasaGlobal.toFixed(1) + "%";
-  document.getElementById("kpiUnidadesSinVender").textContent = fmtN(
-    K.totalDeriv - K.totalConv,
-  );
-  document.querySelector(".kpi-card.g-real .value").textContent =
-    "S/ " + fmtN(Math.round(K.ganReal));
-  document.querySelector(".kpi-card.g-perd .value").textContent =
-    "S/ " + fmtN(Math.round(K.ganPerd));
+  const elConvVal = document.querySelector(".kpi-card.conv .value");
+  if (elConvVal) elConvVal.textContent = K.tasaGlobal.toFixed(1) + "%";
+  const elSinVender = document.getElementById("kpiUnidadesSinVender");
+  if (elSinVender) elSinVender.textContent = fmtN(K.totalDeriv - K.totalConv);
+  const elGreal = document.getElementById("kpiGanReal");
+  if (elGreal) elGreal.textContent = "S/ " + fmtN(Math.round(K.ganReal));
+  const elGperd = document.getElementById("kpiGanPerd");
+  if (elGperd) elGperd.textContent = "S/ " + fmtN(Math.round(K.ganPerd));
+  const elVentaConv = document.getElementById("kpiTotalVentaConv");
+  if (elVentaConv) elVentaConv.textContent = "S/ " + fmtN(Math.round(K.totalVentaConv));
+  const elVentaSin = document.getElementById("kpiTotalVentaSinConv");
+  if (elVentaSin) elVentaSin.textContent = "S/ " + fmtN(Math.round(K.totalVentaSinConv));
 
   const elRecConv = document.getElementById("kpiRecetasConv");
   const valConv = K.segConvGuia + K.parConvGuia;
@@ -369,11 +374,15 @@ function renderDashboard(D) {
   }
 
   const elPctRecConv = document.getElementById("kpiPctRecetasConv");
+  const elPctRecSinConv = document.getElementById("kpiPctRecetasSinConv");
+  const totRec = valConv + valSinConv;
   if (elPctRecConv) {
-    const totRec = valConv + valSinConv;
-    if (totRec > 0)
-      elPctRecConv.textContent = ((valConv / totRec) * 100).toFixed(1) + "%";
-    else elPctRecConv.textContent = "0%";
+    elPctRecConv.textContent =
+      totRec > 0 ? ((valConv / totRec) * 100).toFixed(1) + "%" : "0%";
+  }
+  if (elPctRecSinConv) {
+    elPctRecSinConv.textContent =
+      totRec > 0 ? ((valSinConv / totRec) * 100).toFixed(1) + "%" : "0%";
   }
 
   // ── KPIs sin stock ──────────────────────────────────────
@@ -1918,7 +1927,9 @@ function buildDataFromWorkbook(wb, fileName) {
   let totalDeriv = 0,
     totalConv = 0,
     ganReal = 0,
-    ganPerd = 0;
+    ganPerd = 0,
+    totalVentaConv = 0,
+    totalVentaSinConv = 0;
   let segDeriv = 0,
     segConv = 0,
     parDeriv = 0,
@@ -1945,6 +1956,8 @@ function buildDataFromWorkbook(wb, fileName) {
     totalConv += conv;
     ganReal += totC - coC;
     ganPerd += totS - coS;
+    totalVentaConv += totC;
+    totalVentaSinConv += totS;
     if (tipo.includes("SEG")) {
       segDeriv += der;
       segConv += conv;
@@ -2022,6 +2035,8 @@ function buildDataFromWorkbook(wb, fileName) {
     totalConv,
     ganReal,
     ganPerd,
+    totalVentaConv,
+    totalVentaSinConv,
     segDeriv,
     segConv,
     segVentaNR,

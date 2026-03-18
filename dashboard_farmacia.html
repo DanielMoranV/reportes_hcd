@@ -511,46 +511,13 @@
         <h3>Análisis de Conversión de Medicamentos</h3>
       </div>
 
-      <!-- KPI CONVERSIÓN -->
-
+      <!-- KPI CONVERSIÓN — Fila 1: convertidas -->
       <div class="kpi-row">
         <div class="kpi-card pct-recetas-conv">
           <div class="kpi-icon">📊</div>
           <div class="kpi-info">
             <div class="value" id="kpiPctRecetasConv">0%</div>
             <div class="label">% Recetas Convertidas</div>
-          </div>
-        </div>
-        <div style="display: none">
-          <div class="kpi-card conv">
-            <div class="kpi-icon">🔄</div>
-            <div class="kpi-info">
-              <div class="value">45.5%</div>
-              <div class="label">
-                Tasa de conversión global
-                <i
-                  class="fi tip-l"
-                  data-f="Fórmula: can_conversion ÷ can_derivada × 100&#10;Ej: 2,352 ÷ 5,172 × 100 = 45.5%"
-                  >i</i
-                >
-              </div>
-            </div>
-          </div>
-        </div>
-        <div style="display: none">
-          <div class="kpi-card units">
-            <div class="kpi-icon">📦</div>
-            <div class="kpi-info">
-              <div class="value" id="kpiUnidadesSinVender">2,820</div>
-              <div class="label">
-                Unds. sin vender
-                <i
-                  class="fi tip-l"
-                  data-f="Fórmula: can_derivada − can_conversion&#10;Ej: 5,172 − 2,352 = 2,820 unidades"
-                  >i</i
-                >
-              </div>
-            </div>
           </div>
         </div>
         <div class="kpi-card conv-recetas">
@@ -560,6 +527,45 @@
             <div class="label">Total Recetas Convertidas</div>
           </div>
         </div>
+        <div class="kpi-card g-real">
+          <div class="kpi-icon">💰</div>
+          <div class="kpi-info">
+            <div class="value" id="kpiTotalVentaConv">S/ —</div>
+            <div class="label">
+              Total Venta Convertida
+              <i
+                class="fi tip-r"
+                data-f="Fórmula: Σ tot_conversion&#10;Suma total de ventas realizadas"
+                >i</i
+              >
+            </div>
+          </div>
+        </div>
+        <div class="kpi-card g-real">
+          <div class="kpi-icon">✅</div>
+          <div class="kpi-info">
+            <div class="value" id="kpiGanReal">S/ —</div>
+            <div class="label">
+              Utilidad Bruta
+              <i
+                class="fi tip-r"
+                data-f="Fórmula: Σ tot_conversion − Σ t_costo_conver&#10;Total vendido − Costo del producto"
+                >i</i
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI CONVERSIÓN — Fila 2: sin convertir -->
+      <div class="kpi-row">
+        <div class="kpi-card no-conv-recetas">
+          <div class="kpi-icon">📉</div>
+          <div class="kpi-info">
+            <div class="value" id="kpiPctRecetasSinConv">0%</div>
+            <div class="label">% Recetas Sin Convertir</div>
+          </div>
+        </div>
         <div class="kpi-card no-conv-recetas">
           <div class="kpi-icon">❌</div>
           <div class="kpi-info">
@@ -567,31 +573,29 @@
             <div class="label">Total Recetas Sin Convertir</div>
           </div>
         </div>
-
-        <div class="kpi-card g-real">
-          <div class="kpi-icon">✅</div>
+        <div class="kpi-card g-perd">
+          <div class="kpi-icon">📦</div>
           <div class="kpi-info">
-            <div class="value">S/ 16,640</div>
+            <div class="value" id="kpiTotalVentaSinConv">S/ —</div>
             <div class="label">
-              Utilidad Bruta
+              Total Venta No Convertida
               <i
                 class="fi tip-r"
-                data-f="Fórmula: Σ tot_conversion − Σ t_costo_conver&#10;S/ 27,910.87 − S/ 11,270.87 = S/ 16,640"
+                data-f="Fórmula: Σ tot_sinconversion&#10;Suma total de ventas no realizadas"
                 >i</i
               >
             </div>
           </div>
         </div>
-
         <div class="kpi-card g-perd">
           <div class="kpi-icon">⚠️</div>
           <div class="kpi-info">
-            <div class="value">S/ 7,228</div>
+            <div class="value" id="kpiGanPerd">S/ —</div>
             <div class="label">
-              Potencial neto no realizado
+              Rentabilidad Potencial no Convertida
               <i
                 class="fi tip-r"
-                data-f="Fórmula: Σ tot_sinconversion − Σ t_costo_sin_conver&#10;S/ 30,738.06 − S/ 23,510.45 = S/ 7,228"
+                data-f="Fórmula: Σ tot_sinconversion − Σ t_costo_sin_conver&#10;Ingreso no capturado − Costo del inventario"
                 >i</i
               >
             </div>
