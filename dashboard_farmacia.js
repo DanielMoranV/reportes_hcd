@@ -94,6 +94,7 @@ function showEmptyState() {
     "#kpiTotalVentaSinConv",
     "#kpiAtenciones",
     "#kpiMedicos",
+    "#kpiPctRecetasAten",
     "#kpiRecetasConv",
     "#kpiRecetasSinConv",
     "#kpiPctRecetasConv",
@@ -326,6 +327,7 @@ function renderDashboard(D) {
   const totalSeg = D.recetas.reduce((s, d) => s + d.seguro, 0);
   const totalPar = D.recetas.reduce((s, d) => s + d.particular, 0);
   const total = totalSeg + totalPar;
+  window._totalRecetas = total; // expuesto para % Recetas/Atenciones (calculado al llegar PostgreSQL)
   document.querySelector(".kpi-card.total .value").textContent = fmtN(total);
   document.querySelector(".kpi-card.seguro .value").textContent =
     fmtN(totalSeg);
@@ -691,10 +693,15 @@ function renderRankingTable(data) {
     const segW = ((d.seguro / maxTotal) * 60).toFixed(1);
     const parW = ((d.particular / maxTotal) * 60).toFixed(1);
     const isTop = i < 3;
+    const spinner = '<span class="us-spin" style="width:12px;height:12px;border-width:2px;display:inline-block"></span>';
     const atenciones =
-      d.atenciones !== undefined
-        ? fmtN(d.atenciones)
-        : '<span class="us-spin" style="width:12px;height:12px;border-width:2px;display:inline-block"></span>';
+      d.atenciones !== undefined ? fmtN(d.atenciones) : spinner;
+    const pctCell =
+      d.atenciones !== undefined && d.atenciones > 0
+        ? `<span style="font-size:.8rem;font-weight:700;color:#2563eb">${((total / d.atenciones) * 100).toFixed(1)}%</span>`
+        : d.atenciones === 0
+          ? '<span style="font-size:.78rem;color:#9ca3af">0%</span>'
+          : spinner;
 
     tbody.innerHTML += `<tr>
       <td><span class="rank-num ${isTop ? "top" : ""}">${i + 1}</span></td>
@@ -709,6 +716,7 @@ function renderRankingTable(data) {
       <td class="num"><span class="pill par">${d.particular}</span></td>
       <td class="num" style="color:#1a2035;font-size:.88rem">${total}</td>
       <td class="num"><span class="pill" style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb">${atenciones}</span></td>
+      <td class="num">${pctCell}</td>
     </tr>`;
   });
 }

@@ -87,6 +87,13 @@
             <div class="label">Total Médicos con Recetas</div>
           </div>
         </div>
+        <div class="kpi-card pct-recetas-conv">
+          <div class="kpi-icon">📊</div>
+          <div class="kpi-info">
+            <div class="value" id="kpiPctRecetasAten">—</div>
+            <div class="label">% Recetas / Atenciones</div>
+          </div>
+        </div>
       </div>
 
       <!-- CHART + TABLE -->
@@ -169,6 +176,12 @@
                     title="Atenciones desde base de datos PostgreSQL"
                   >
                     Aten.
+                  </th>
+                  <th
+                    class="num"
+                    title="% Recetas sobre total de atenciones del médico"
+                  >
+                    % Rec/Aten
                   </th>
                 </tr>
               </thead>
@@ -1395,6 +1408,13 @@
           const elAten = document.getElementById("kpiAtenciones");
           if (elAten) {
             elAten.textContent = totalAtenciones.toLocaleString("es-PE");
+          }
+
+          // % Recetas / Atenciones (requiere ambos valores)
+          const elPctAten = document.getElementById("kpiPctRecetasAten");
+          if (elPctAten && window._totalRecetas && totalAtenciones > 0) {
+            const pct = (window._totalRecetas / totalAtenciones) * 100;
+            elPctAten.textContent = pct.toFixed(1) + "%";
           }
 
           // Actualizar la tabla "Ranking Médicos" con las atenciones por médico
