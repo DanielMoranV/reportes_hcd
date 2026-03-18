@@ -253,9 +253,7 @@ function showEmptyState() {
   const munidadesLegend = document.getElementById("munidadesLegend");
   if (munidadesLegend) munidadesLegend.style.display = "none";
   const munidadesSub = document.getElementById("medsUnidadesSubtitle");
-  if (munidadesSub)
-    munidadesSub.textContent =
-      "Medicamentos más recetados (unidades derivadas)";
+  if (munidadesSub) munidadesSub.textContent = "Unidades vendidas por receta";
 
   // —— Barra superior de estado
   setStatus(
@@ -954,14 +952,14 @@ function renderMedsUnidadesChart(data) {
     datasets = [
       {
         label: "Seguro",
-        data: [...data].reverse().map((p) => p.derivadaSeg),
+        data: [...data].reverse().map((p) => p.unidadesSeg),
         backgroundColor: "#2e86de",
         borderRadius: 4,
         borderSkipped: false,
       },
       {
         label: "Particular",
-        data: [...data].reverse().map((p) => p.derivadaPar),
+        data: [...data].reverse().map((p) => p.unidadesPar),
         backgroundColor: "#f39c12",
         borderRadius: 4,
         borderSkipped: false,
@@ -970,8 +968,8 @@ function renderMedsUnidadesChart(data) {
   } else {
     datasets = [
       {
-        label: "Recetas",
-        data: [...data].reverse().map((p) => p.derivada),
+        label: "Unds. vendidas",
+        data: [...data].reverse().map((p) => p.unidades),
         backgroundColor: "#8b5cf6",
         borderRadius: 4,
         borderSkipped: false,
@@ -993,15 +991,15 @@ function renderMedsUnidadesChart(data) {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: (item) => ` ${item.raw} recetas`,
+            label: (item) => ` ${item.raw} unds. vendidas`,
             afterBody: (items) => {
               const idx = data.length - 1 - items[0].dataIndex;
               const d = data[idx];
               return [
-                `Vendidas: ${d.unidades} unds.`,
+                `Recetadas: ${d.derivada} unds.`,
                 `Ingreso: S/ ${d.ingreso.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`,
                 ...(medsUnidadesMode === "sep"
-                  ? [`Total recetas: ${d.derivada}`]
+                  ? [`Total vendidas: ${d.unidades}`]
                   : []),
               ];
             },
@@ -1037,7 +1035,7 @@ function setMedsUnidadesMode(mode) {
     sub.textContent =
       mode === "sep"
         ? "Agrupado por tipo de atención"
-        : "Medicamentos más recetados (unidades derivadas)";
+        : "Unidades vendidas por receta";
   if (_medsUnidadesData) renderMedsUnidadesChart(_medsUnidadesData);
 }
 
@@ -1864,9 +1862,8 @@ function buildDataFromWorkbook(wb, fileName) {
   const topMedIngreso = [...topAllProds]
     .sort((a, b) => b.ingreso - a.ingreso)
     .slice(0, 10);
-  const topMedRecetas = Object.values(prodMap)
-    .filter((p) => p.derivada > 0)
-    .sort((a, b) => b.derivada - a.derivada)
+  const topMedRecetas = [...topAllProds]
+    .sort((a, b) => b.unidades - a.unidades)
     .slice(0, 10);
 
   // ── TOP PRODUCTOS SIN CONVERSIÓN ──────────────────────
